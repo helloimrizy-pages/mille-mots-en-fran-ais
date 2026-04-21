@@ -1,0 +1,16 @@
+# Superpowers brainstorming session content
+.superpowers/
+
+# Local IDE settings
+.claude/settings.local.json
+
+# Node
+node_modules/
+dist/
+
+# Pipeline intermediates (committed artifacts live in /public)
+data/
+
+# Env
+.env
+.env.local
