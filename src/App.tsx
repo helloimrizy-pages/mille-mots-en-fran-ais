@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useState } from 'react';
 import { TopBar } from './components/TopBar';
 import { WordList } from './components/WordList';
+import { useAudio } from './hooks/useAudio';
 import { useFilteredWords, type PosFilter, type SortMode } from './hooks/useFilteredWords';
 import { usePreferences } from './hooks/usePreferences';
 import type { Word } from './types';
@@ -21,6 +22,7 @@ function filterReducer(s: FilterState, a: FilterAction): FilterState {
 
 export default function App() {
   const { hideTranslation } = usePreferences();
+  const audio = useAudio();
   const [words, setWords] = useState<Word[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filters, dispatch] = useReducer(filterReducer, { search: '', pos: 'all', sort: 'rank' });
@@ -63,10 +65,14 @@ export default function App() {
             expandedIds={expandedIds}
             hideTranslation={hideTranslation}
             onToggleExpand={toggleExpand}
-            onPlayWord={(w) => console.log('play', w.french)}
-            onPlaySentence={(w) => console.log('sentence', w.french)}
-            currentPlayingWordId={null}
-            currentPlayingSentenceId={null}
+            onPlayWord={(w) => { audio.play(`w-${w.id}`, w.audio.word); }}
+            onPlaySentence={(w) => { audio.play(`s-${w.id}`, w.audio.sentence); }}
+            currentPlayingWordId={
+              words?.find((w) => audio.isPlaying(`w-${w.id}`))?.id ?? null
+            }
+            currentPlayingSentenceId={
+              words?.find((w) => audio.isPlaying(`s-${w.id}`))?.id ?? null
+            }
           />
         )}
       </main>
