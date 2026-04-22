@@ -16,6 +16,7 @@ data/
 .env
 .env.local
 *.local
+gcp-sa.json
 
 # Logs
 logs
