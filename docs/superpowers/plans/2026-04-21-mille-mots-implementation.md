@@ -241,7 +241,7 @@ const config: Config = {
         text: 'var(--text)',
         'text-muted': 'var(--text-muted)',
         'text-subtle': 'var(--text-subtle)',
-        accent: 'var(--accent)',
+        emphasis: 'var(--emphasis)',
         // POS tag palettes (bg / fg pairs)
         'tag-noun-bg': 'var(--tag-noun-bg)',
         'tag-noun-fg': 'var(--tag-noun-fg)',
@@ -298,7 +298,7 @@ export default config;
   --text: #2A2826;
   --text-muted: #7D7468;
   --text-subtle: #97907F;
-  --accent: #2A2826;
+  --emphasis: #2A2826;
 
   --tag-noun-bg: #E8EDE5;  --tag-noun-fg: #56684F;
   --tag-verb-bg: #F0E6DA;  --tag-verb-fg: #6E5740;
@@ -321,7 +321,7 @@ export default config;
   --text: #EAE6DC;
   --text-muted: #B0A99A;
   --text-subtle: #8C8578;
-  --accent: #EAE6DC;
+  --emphasis: #EAE6DC;
 
   --tag-noun-bg: #2F3A2C;  --tag-noun-fg: #B7C9B0;
   --tag-verb-bg: #3B3124;  --tag-verb-fg: #D9C3A6;
@@ -901,7 +901,7 @@ export function WordRow(props: Props) {
             onToggleExpand();
           }
         }}
-        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40"
       >
         <div className="flex items-baseline gap-3 min-w-0">
           <button
@@ -909,8 +909,8 @@ export function WordRow(props: Props) {
             aria-label={`Play pronunciation of ${word.french}`}
             onClick={(e) => { e.stopPropagation(); onPlayWord(); }}
             className={cn(
-              'text-base font-semibold hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded',
-              isWordPlaying && 'text-accent',
+              'text-base font-semibold hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40 rounded',
+              isWordPlaying && 'text-emphasis',
             )}
           >
             {word.french}
@@ -1022,7 +1022,7 @@ export function WordRowExpanded({ word, hideTranslation, onPlayWord, onPlaySente
           type="button"
           aria-label={`Play pronunciation of ${word.french}`}
           onClick={onPlayWord}
-          className="flex items-center gap-1 text-text hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded"
+          className="flex items-center gap-1 text-text hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40 rounded"
         >
           <span className="font-semibold">{word.french}</span>
           <Volume2 size={13} className="text-text-subtle" />
@@ -1041,8 +1041,8 @@ export function WordRowExpanded({ word, hideTranslation, onPlayWord, onPlaySente
             onClick={onPlaySentence}
             aria-label="Play example sentence"
             className={cn(
-              'flex items-center gap-1 text-[11px] px-2 py-[2px] rounded-pill border border-border bg-surface hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
-              isSentencePlaying && 'text-accent',
+              'flex items-center gap-1 text-[11px] px-2 py-[2px] rounded-pill border border-border bg-surface hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40',
+              isSentencePlaying && 'text-emphasis',
             )}
           >
             <Play size={10} /> Play sentence
@@ -1470,9 +1470,9 @@ export function FilterChips({ value, onChange }: Props) {
             aria-selected={active}
             onClick={() => onChange(key)}
             className={cn(
-              'shrink-0 text-xs px-3 py-1 rounded-pill transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
+              'shrink-0 text-xs px-3 py-1 rounded-pill transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40',
               active
-                ? 'bg-accent text-surface'
+                ? 'bg-emphasis text-surface'
                 : 'bg-surface text-text-muted hover:bg-surface-muted',
             )}
           >
@@ -1518,7 +1518,7 @@ const LABEL: Record<SortMode, string> = { alpha: 'A–Z', rank: 'Frequency' };
 export function SortMenu({ value, onChange }: Props) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-1 text-xs px-3 py-1 rounded-pill bg-surface text-text-muted hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
+      <DropdownMenuTrigger className="flex items-center gap-1 text-xs px-3 py-1 rounded-pill bg-surface text-text-muted hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40">
         {LABEL[value]}
         <ChevronDown size={12} />
       </DropdownMenuTrigger>
@@ -1549,7 +1549,7 @@ export function DarkModeToggle() {
       type="button"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="p-1.5 rounded-pill text-text-subtle hover:text-text hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="p-1.5 rounded-pill text-text-subtle hover:text-text hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40"
     >
       {isDark ? <Sun size={16} /> : <Moon size={16} />}
     </button>
@@ -1571,7 +1571,7 @@ export function HideTranslationToggle() {
       aria-label={hideTranslation ? 'Show translations' : 'Hide translations'}
       aria-pressed={hideTranslation}
       onClick={() => setHideTranslation(!hideTranslation)}
-      className="p-1.5 rounded-pill text-text-subtle hover:text-text hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="p-1.5 rounded-pill text-text-subtle hover:text-text hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40"
     >
       {hideTranslation ? <EyeOff size={16} /> : <Eye size={16} />}
     </button>

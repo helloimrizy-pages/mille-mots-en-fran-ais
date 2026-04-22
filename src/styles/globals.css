@@ -13,7 +13,7 @@
   --text: #2A2826;
   --text-muted: #6F6858;
   --text-subtle: #97907F;
-  --accent: #2A2826;
+  --emphasis: #2A2826;
 
   --tag-noun-bg: #E8EDE5;  --tag-noun-fg: #56684F;
   --tag-verb-bg: #F0E6DA;  --tag-verb-fg: #6E5740;
@@ -36,7 +36,7 @@
   --text: #EAE6DC;
   --text-muted: #B0A99A;
   --text-subtle: #8C8578;
-  --accent: #EAE6DC;
+  --emphasis: #EAE6DC;
 
   --tag-noun-bg: #2F3A2C;  --tag-noun-fg: #B7C9B0;
   --tag-verb-bg: #3B3124;  --tag-verb-fg: #D9C3A6;
@@ -49,6 +49,51 @@
   --tag-m-bg:  #2C3A44;  --tag-m-fg:  #B0C5D5;
   --tag-f-bg:  #3E2D33;  --tag-f-fg:  #D7B0BC;
   --tag-mf-bg: #332F39;  --tag-mf-fg: #B5AEC0;
+}
+
+:root {
+  /* shadcn/ui compatibility layer — maps shadcn's default token names to the Soft Warm palette */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--emphasis);
+  --primary-foreground: var(--bg);
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-muted);
+  --accent-foreground: var(--text);
+  --destructive: #B3261E;
+  --destructive-foreground: #FFFFFF;
+  --input: var(--border);
+  --ring: var(--emphasis);
+  --radius: 12px;
+}
+
+[data-theme="dark"] {
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--emphasis);
+  --primary-foreground: var(--bg);
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-muted);
+  --accent-foreground: var(--text);
+  --destructive: #F2B8B5;
+  --destructive-foreground: #601410;
+  --input: var(--border);
+  --ring: var(--emphasis);
+  --radius: 12px;
 }
 
 html, body, #root { height: 100%; }
