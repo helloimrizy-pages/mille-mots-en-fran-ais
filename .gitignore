@@ -3,6 +3,7 @@
 
 # Local IDE settings
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # Node
 node_modules/
