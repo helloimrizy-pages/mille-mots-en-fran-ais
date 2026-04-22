@@ -26,13 +26,18 @@ const SYSTEM_PROMPT = `You enrich French vocabulary entries for a learner app.
 For each French word given, return ONE JSON object with:
 - french: the input word (unchanged unless it was malformed)
 - english: primary English meaning (short, learner-friendly)
-- pos: one of noun/verb/adjective/adverb/pronoun/conjunction/preposition
+- pos: MUST be one of: noun / verb / adjective / adverb / pronoun / conjunction / preposition
+  IMPORTANT: There is no "article" or "determiner" POS. For definite articles (le, la, les, l'), indefinite articles (un, une, des), demonstrative determiners (ce, cet, cette, ces), possessive determiners (mon, ma, mes, ton, ta, tes, etc.), and relative/interrogative determiners (quel, quelle) → ALWAYS use pos: "pronoun" (they're closest to that in our simplified classification).
+  For negation particles (ne, ni) → use pos: "adverb".
+  For clitic contractions (c', j', l', n', m', t', s', d', qu') → set drop: true.
+  For numerals used as determiners (un, deux, trois...) → use pos: "adjective".
+  For interjections (oh, ah, hé, bon, merde, ok, quoi) → use pos: "adverb" OR drop: true if not meaningful as a standalone learner entry.
 - gender: "m" / "f" / "mf" — only if pos="noun". Omit otherwise.
 - plural: plural form — only if pos="noun". Omit otherwise.
 - ipa: IPA phonetic transcription WITHOUT surrounding brackets (e.g. "livʁ", not "[livʁ]")
 - example: { fr, en } — a natural example sentence using the word in its primary sense
 - synonyms: up to 2 common synonyms, each { word, note? } where note is e.g. "informal", "formal"
-- drop: true ONLY if the entry is a proper noun, a spelling variant already covered by another entry, or otherwise unsuitable for a learner list
+- drop: true ONLY if the entry is a proper noun, a duplicate, a clitic contraction, or otherwise unsuitable for a learner list
 
 Return a JSON array, one object per input word, in the same order.
 No prose. No markdown fences. Just the JSON array.`;
@@ -96,16 +101,23 @@ async function main() {
       continue;
     }
 
-    const items = z.array(llmItemSchema).safeParse(parsed);
-    if (!items.success) {
-      console.warn(`  LLM schema parse failed: ${items.error.issues.slice(0, 2).map((i) => i.message).join('; ')}`);
+    if (!Array.isArray(parsed)) {
+      console.warn('  expected array');
       continue;
     }
 
-    for (let j = 0; j < items.data.length; j++) {
-      const item = items.data[j];
+    // Parse each item individually so one bad item (e.g. "article" POS)
+    // doesn't nuke the whole batch.
+    for (let j = 0; j < parsed.length; j++) {
       const input = batch[j];
-      if (!input || !item) continue;
+      if (!input) continue;
+
+      const itemResult = llmItemSchema.safeParse(parsed[j]);
+      if (!itemResult.success) {
+        console.warn(`  item reject: ${input.french} — ${itemResult.error.issues[0]?.message ?? 'unknown'}`);
+        continue;
+      }
+      const item = itemResult.data;
       if (item.drop) {
         console.log(`  drop: ${input.french}`);
         continue;
