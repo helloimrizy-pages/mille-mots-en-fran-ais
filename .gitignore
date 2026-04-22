@@ -3,10 +3,12 @@
 
 # Local IDE settings
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # Node
 node_modules/
 dist/
+dist-ssr/
 
 # Pipeline intermediates (committed artifacts live in /public)
 data/
@@ -14,3 +16,25 @@ data/
 # Env
 .env
 .env.local
+*.local
+gcp-sa.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
