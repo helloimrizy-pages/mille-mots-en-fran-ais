@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useState } from 'react';
 import { TopBar } from './components/TopBar';
 import { WordList } from './components/WordList';
+import { StudyModal } from './flashcards/components/StudyModal';
 import { useAudio } from './hooks/useAudio';
 import { useFilteredWords, type PosFilter, type SortMode } from './hooks/useFilteredWords';
 import { usePreferences } from './hooks/usePreferences';
@@ -27,6 +28,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [filters, dispatch] = useReducer(filterReducer, { search: '', pos: 'all', sort: 'rank' });
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [studyOpen, setStudyOpen] = useState(false);
 
   useEffect(() => {
     fetch('/words.json')
@@ -55,6 +57,7 @@ export default function App() {
         onPosChange={(v) => dispatch({ type: 'pos', value: v })}
         onSortChange={(v) => dispatch({ type: 'sort', value: v })}
         resultCount={filtered.length}
+        onOpenStudy={() => setStudyOpen(true)}
       />
       <main className="px-4 py-4">
         {error && <div className="p-4 text-red-700 bg-red-50 rounded">Failed to load words: {error}</div>}
@@ -76,6 +79,11 @@ export default function App() {
           />
         )}
       </main>
+      <StudyModal
+        words={words ?? []}
+        open={studyOpen}
+        onClose={() => setStudyOpen(false)}
+      />
     </div>
   );
 }

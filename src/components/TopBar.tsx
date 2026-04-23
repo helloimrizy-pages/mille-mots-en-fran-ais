@@ -3,6 +3,7 @@ import { FilterChips } from './FilterChips';
 import { SortMenu } from './SortMenu';
 import { DarkModeToggle } from './DarkModeToggle';
 import { HideTranslationToggle } from './HideTranslationToggle';
+import { DueBadge } from '../flashcards/components/DueBadge';
 import type { PosFilter, SortMode } from '../hooks/useFilteredWords';
 
 interface Props {
@@ -13,9 +14,10 @@ interface Props {
   onPosChange: (v: PosFilter) => void;
   onSortChange: (v: SortMode) => void;
   resultCount: number;
+  onOpenStudy: () => void;
 }
 
-export function TopBar({ search, pos, sort, onSearchChange, onPosChange, onSortChange, resultCount }: Props) {
+export function TopBar({ search, pos, sort, onSearchChange, onPosChange, onSortChange, resultCount, onOpenStudy }: Props) {
   return (
     <div className="sticky top-0 z-10 bg-bg/90 backdrop-blur-md px-4 py-4 border-b border-border">
       <div className="flex items-center justify-between mb-2.5">
@@ -26,6 +28,7 @@ export function TopBar({ search, pos, sort, onSearchChange, onPosChange, onSortC
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <DueBadge onClick={onOpenStudy} />
           <SortMenu value={sort} onChange={onSortChange} />
           <DarkModeToggle />
           <HideTranslationToggle />
