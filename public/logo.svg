@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-label="Mille Mots">
+  <!-- Circumflex accent — a nod to French orthography -->
+  <path d="M 88 66 L 128 38 L 168 66"
+        stroke="currentColor"
+        stroke-width="10"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        opacity="0.55"/>
+  <!-- Capital M in stroke-only form -->
+  <path d="M 56 210 L 56 94 L 128 174 L 200 94 L 200 210"
+        stroke="currentColor"
+        stroke-width="14"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>
