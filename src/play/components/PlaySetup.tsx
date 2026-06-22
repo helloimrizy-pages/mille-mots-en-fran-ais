@@ -36,7 +36,7 @@ export function PlaySetup({ wordCount, settings, onSettingsChange, onStart }: Pr
   return (
     <div className="flex flex-col gap-6 p-4">
       <div className="text-sm text-text-muted">
-        {`${wordCount} selected word${wordCount === 1 ? '' : 's'}`}
+        Playing with <strong className="text-text">{wordCount}</strong> selected word{wordCount === 1 ? '' : 's'}.
       </div>
 
       <section>

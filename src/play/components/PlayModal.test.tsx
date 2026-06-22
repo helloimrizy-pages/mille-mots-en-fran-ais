@@ -20,7 +20,9 @@ function renderModal(selected: Word[]) {
 describe('PlayModal', () => {
   it('shows the setup screen with the selected word count', () => {
     renderModal([makeWord(1), makeWord(2)]);
-    expect(screen.getByText(/2 selected words/i)).toBeInTheDocument();
+    expect(
+      screen.getByText((_, el) => el?.textContent === 'Playing with 2 selected words.'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start playing/i })).toBeEnabled();
   });
 
