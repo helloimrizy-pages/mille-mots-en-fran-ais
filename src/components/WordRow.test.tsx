@@ -52,3 +52,28 @@ describe('WordRow click-split', () => {
     expect(screen.getByText('m')).toBeInTheDocument();
   });
 });
+
+describe('WordRow selection', () => {
+  it('renders a checkbox and toggles selection on row click in select mode', async () => {
+    const onToggleSelect = vi.fn();
+    const onToggleExpand = vi.fn();
+    render(
+      <WordRow
+        word={word}
+        expanded={false}
+        hideTranslation={false}
+        onPlayWord={() => {}}
+        onPlaySentence={() => {}}
+        onToggleExpand={onToggleExpand}
+        selectMode
+        selected={false}
+        onToggleSelect={onToggleSelect}
+      />,
+    );
+    const checkbox = screen.getByRole('checkbox', { name: /select livre/i });
+    expect(checkbox).not.toBeChecked();
+    await userEvent.click(screen.getByRole('button', { name: /livre, select/i }));
+    expect(onToggleSelect).toHaveBeenCalledTimes(1);
+    expect(onToggleExpand).not.toHaveBeenCalled();
+  });
+});

@@ -12,6 +12,9 @@ interface Props {
   onToggleExpand: () => void;
   isWordPlaying?: boolean;
   isSentencePlaying?: boolean;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 const POS_TAG_CLASS: Record<Word['pos'], string> = {
@@ -31,38 +34,52 @@ const GENDER_TAG_CLASS = {
 } as const;
 
 export function WordRow(props: Props) {
-  const { word, expanded, hideTranslation, onPlayWord, onPlaySentence, onToggleExpand, isWordPlaying, isSentencePlaying } = props;
+  const { word, expanded, hideTranslation, onPlayWord, onPlaySentence, onToggleExpand, isWordPlaying, isSentencePlaying, selectMode, selected, onToggleSelect } = props;
 
   return (
     <div className="border-b border-border last:border-b-0">
       <div
         role="button"
         tabIndex={0}
-        aria-expanded={expanded}
-        onClick={onToggleExpand}
+        aria-expanded={selectMode ? undefined : expanded}
+        aria-pressed={selectMode ? !!selected : undefined}
+        aria-label={selectMode ? `${word.french}, select` : undefined}
+        onClick={() => (selectMode ? onToggleSelect?.() : onToggleExpand())}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            onToggleExpand();
+            if (selectMode) onToggleSelect?.(); else onToggleExpand();
           }
         }}
         className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40"
       >
-        <div className="flex items-baseline gap-3 min-w-0">
-          <button
-            type="button"
-            aria-label={`Play pronunciation of ${word.french}`}
-            onClick={(e) => { e.stopPropagation(); onPlayWord(); }}
-            className={cn(
-              'text-base font-semibold hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40 rounded',
-              isWordPlaying && 'text-emphasis',
-            )}
-          >
-            {word.french}
-          </button>
-          <span className={cn('text-sm text-text-muted truncate', hideTranslation && 'blur-sm hover:blur-none transition-[filter]')}>
-            {word.english}
-          </span>
+        <div className="flex items-center gap-3 min-w-0">
+          {selectMode && (
+            <input
+              type="checkbox"
+              checked={!!selected}
+              onChange={() => onToggleSelect?.()}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Select ${word.french}`}
+              className="h-4 w-4 accent-emphasis shrink-0"
+            />
+          )}
+          <div className="flex items-baseline gap-3 min-w-0">
+            <button
+              type="button"
+              aria-label={`Play pronunciation of ${word.french}`}
+              onClick={(e) => { e.stopPropagation(); onPlayWord(); }}
+              className={cn(
+                'text-base font-semibold hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40 rounded',
+                isWordPlaying && 'text-emphasis',
+              )}
+            >
+              {word.french}
+            </button>
+            <span className={cn('text-sm text-text-muted truncate', hideTranslation && 'blur-sm hover:blur-none transition-[filter]')}>
+              {word.english}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className={cn('text-[11px] px-2 py-[2px] rounded-pill', POS_TAG_CLASS[word.pos])}>
@@ -73,13 +90,15 @@ export function WordRow(props: Props) {
               {word.gender}
             </span>
           )}
-          <ChevronDown
-            size={14}
-            className={cn('text-text-subtle transition-transform', expanded && 'rotate-180')}
-          />
+          {!selectMode && (
+            <ChevronDown
+              size={14}
+              className={cn('text-text-subtle transition-transform', expanded && 'rotate-180')}
+            />
+          )}
         </div>
       </div>
-      {expanded && (
+      {!selectMode && expanded && (
         <WordRowExpanded
           word={word}
           hideTranslation={hideTranslation}

@@ -11,6 +11,9 @@ interface Props {
   onPlaySentence: (word: Word) => void;
   currentPlayingWordId: number | null;
   currentPlayingSentenceId: number | null;
+  selectMode?: boolean;
+  selectedIds?: Set<number>;
+  onToggleSelect?: (id: number) => void;
 }
 
 export function WordList(props: Props) {
@@ -18,6 +21,7 @@ export function WordList(props: Props) {
     words, expandedIds, hideTranslation,
     onToggleExpand, onPlayWord, onPlaySentence,
     currentPlayingWordId, currentPlayingSentenceId,
+    selectMode, selectedIds, onToggleSelect,
   } = props;
 
   if (words.length === 0) {
@@ -42,6 +46,9 @@ export function WordList(props: Props) {
             onToggleExpand={() => onToggleExpand(word.id)}
             isWordPlaying={currentPlayingWordId === word.id}
             isSentencePlaying={currentPlayingSentenceId === word.id}
+            {...(selectMode ? { selectMode: true } : {})}
+            selected={selectedIds?.has(word.id) ?? false}
+            onToggleSelect={() => onToggleSelect?.(word.id)}
           />
         )}
       />
