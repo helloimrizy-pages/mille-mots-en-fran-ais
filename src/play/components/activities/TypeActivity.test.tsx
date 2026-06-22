@@ -24,4 +24,14 @@ describe('TypeActivity', () => {
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
     expect(onResult).toHaveBeenCalledWith('wrong');
   });
+
+  it('accepts a single alternative from a multi-gloss english field', async () => {
+    const multiGlossWord: Word = { ...word, id: 2, rank: 2, french: 'de', english: 'of, from' };
+    const onResult = vi.fn();
+    render(<TypeActivity item={{ word: multiGlossWord, activity: 'type', direction: 'fr-en' }} onResult={onResult} />);
+    await userEvent.type(screen.getByLabelText(/type your answer/i), 'from');
+    await userEvent.click(screen.getByRole('button', { name: /check/i }));
+    await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    expect(onResult).toHaveBeenCalledWith('correct');
+  });
 });

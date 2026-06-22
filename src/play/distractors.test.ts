@@ -38,4 +38,20 @@ describe('pickDistractors', () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.id).toBe(2);
   });
+
+  it('excludes candidates that share the answer english or french', () => {
+    const answer = makeWord(10, { english: 'the', french: 'le' });
+    // shares same english as answer
+    const sameEnglish = makeWord(11, { english: 'the', french: 'la' });
+    // shares same french as answer
+    const sameFrench = makeWord(12, { english: 'a', french: 'le' });
+    // valid distinct distractor
+    const distinct1 = makeWord(13, { english: 'one', french: 'un' });
+    const distinct2 = makeWord(14, { english: 'two', french: 'deux' });
+    const testPool = [answer, sameEnglish, sameFrench, distinct1, distinct2];
+    const result = pickDistractors(answer, testPool, 3, () => 0);
+    expect(result.some((w) => w.id === sameEnglish.id)).toBe(false);
+    expect(result.some((w) => w.id === sameFrench.id)).toBe(false);
+    expect(result.every((w) => w.id !== answer.id)).toBe(true);
+  });
 });

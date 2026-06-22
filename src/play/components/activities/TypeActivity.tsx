@@ -16,7 +16,9 @@ export function TypeActivity({ item, onResult }: ActivityProps) {
 
   const submit = () => {
     if (result !== null) return;
-    setResult(isTypedAnswerCorrect(value, expected) ? 'correct' : 'wrong');
+    const alternatives = expected.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+    const ok = alternatives.some((alt) => isTypedAnswerCorrect(value, alt));
+    setResult(ok ? 'correct' : 'wrong');
   };
 
   return (

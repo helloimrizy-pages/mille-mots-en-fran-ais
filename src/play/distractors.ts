@@ -17,7 +17,9 @@ export function pickDistractors(
   n: number,
   rng: () => number = Math.random,
 ): Word[] {
-  const candidates = pool.filter((w) => w.id !== answer.id);
+  const candidates = pool.filter(
+    (w) => w.id !== answer.id && w.english !== answer.english && w.french !== answer.french,
+  );
   const samePos = shuffle(candidates.filter((w) => w.pos === answer.pos), rng);
   const otherPos = shuffle(candidates.filter((w) => w.pos !== answer.pos), rng);
   return [...samePos, ...otherPos].slice(0, n);
