@@ -5,6 +5,7 @@ import { DarkModeToggle } from './DarkModeToggle';
 import { HideTranslationToggle } from './HideTranslationToggle';
 import { DueBadge } from '../flashcards/components/DueBadge';
 import type { PosFilter, SortMode } from '../hooks/useFilteredWords';
+import { cn } from '@/lib/utils';
 
 interface Props {
   search: string;
@@ -15,9 +16,11 @@ interface Props {
   onSortChange: (v: SortMode) => void;
   resultCount: number;
   onOpenStudy: () => void;
+  selectMode: boolean;
+  onToggleSelectMode: () => void;
 }
 
-export function TopBar({ search, pos, sort, onSearchChange, onPosChange, onSortChange, resultCount, onOpenStudy }: Props) {
+export function TopBar({ search, pos, sort, onSearchChange, onPosChange, onSortChange, resultCount, onOpenStudy, selectMode, onToggleSelectMode }: Props) {
   return (
     <div className="sticky top-0 z-10 bg-bg/90 backdrop-blur-md px-4 py-4 border-b border-border">
       <div className="flex items-center justify-between mb-2.5">
@@ -28,6 +31,17 @@ export function TopBar({ search, pos, sort, onSearchChange, onPosChange, onSortC
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleSelectMode}
+            aria-pressed={selectMode}
+            className={cn(
+              'text-xs px-3 py-1.5 rounded-pill transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40',
+              selectMode ? 'bg-emphasis text-surface' : 'text-text-muted hover:bg-surface-muted border border-border',
+            )}
+          >
+            {selectMode ? 'Done' : 'Select'}
+          </button>
           <DueBadge onClick={onOpenStudy} />
           <SortMenu value={sort} onChange={onSortChange} />
           <DarkModeToggle />

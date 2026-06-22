@@ -2,6 +2,8 @@ import { useEffect, useReducer, useState } from 'react';
 import { TopBar } from './components/TopBar';
 import { WordList } from './components/WordList';
 import { StudyModal } from './flashcards/components/StudyModal';
+import { PlayModal } from './play/components/PlayModal';
+import { PlayBar } from './play/components/PlayBar';
 import { useAudio } from './hooks/useAudio';
 import { useFilteredWords, type PosFilter, type SortMode } from './hooks/useFilteredWords';
 import { usePreferences } from './hooks/usePreferences';
@@ -29,6 +31,9 @@ export default function App() {
   const [filters, dispatch] = useReducer(filterReducer, { search: '', pos: 'all', sort: 'rank' });
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [studyOpen, setStudyOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [playOpen, setPlayOpen] = useState(false);
 
   useEffect(() => {
     fetch('/words.json')
@@ -47,6 +52,16 @@ export default function App() {
     });
   };
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedWords = (words ?? []).filter((w) => selectedIds.has(w.id));
+
   return (
     <div className="min-h-screen max-w-2xl mx-auto">
       <TopBar
@@ -58,6 +73,11 @@ export default function App() {
         onSortChange={(v) => dispatch({ type: 'sort', value: v })}
         resultCount={filtered.length}
         onOpenStudy={() => setStudyOpen(true)}
+        selectMode={selectMode}
+        onToggleSelectMode={() => {
+          setSelectMode((m) => !m);
+          if (selectMode) setSelectedIds(new Set());
+        }}
       />
       <main className="px-4 py-4">
         {error && <div className="p-4 text-red-700 bg-red-50 rounded">Failed to load words: {error}</div>}
@@ -76,9 +96,26 @@ export default function App() {
             currentPlayingSentenceId={
               words?.find((w) => audio.isPlaying(`s-${w.id}`))?.id ?? null
             }
+            {...(selectMode ? { selectMode: true } : {})}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
           />
         )}
       </main>
+      {selectMode && (
+        <PlayBar
+          count={selectedIds.size}
+          onSelectAll={() => setSelectedIds(new Set(filtered.map((w) => w.id)))}
+          onClear={() => setSelectedIds(new Set())}
+          onPlay={() => setPlayOpen(true)}
+        />
+      )}
+      <PlayModal
+        selected={selectedWords}
+        pool={words ?? []}
+        open={playOpen}
+        onClose={() => setPlayOpen(false)}
+      />
       <StudyModal
         words={words ?? []}
         open={studyOpen}
