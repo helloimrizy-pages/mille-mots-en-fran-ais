@@ -33,7 +33,7 @@ export function SettingsPanel() {
         <input
           type="range"
           min={0}
-          max={50}
+          max={100}
           step={1}
           value={settings.newPerDay}
           onChange={(e) => updateSettings({ newPerDay: Number(e.target.value) })}

@@ -14,7 +14,7 @@ function clampSettings(s: Partial<StudySettings>): StudySettings {
   const merged = { ...DEFAULT_SETTINGS, ...s };
   return {
     ...merged,
-    newPerDay: Math.max(0, Math.min(50, Math.floor(merged.newPerDay))),
+    newPerDay: Math.max(0, Math.min(100, Math.floor(merged.newPerDay))),
     requestRetention: Math.max(0.80, Math.min(0.95, merged.requestRetention)),
     typedCheck: !!merged.typedCheck,
     lastFilter: Array.isArray(merged.lastFilter) ? merged.lastFilter : [],

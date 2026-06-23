@@ -48,7 +48,7 @@ describe('load', () => {
       daily: { date: '2026-04-23', newIntroduced: 0 },
     }));
     const blob = load();
-    expect(blob.settings.newPerDay).toBe(50);
+    expect(blob.settings.newPerDay).toBe(100);
     expect(blob.settings.requestRetention).toBe(0.95);
     expect(blob.settings.typedCheck).toBe(true);
     expect(blob.settings.lastFilter).toEqual([]);
