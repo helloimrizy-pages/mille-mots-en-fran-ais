@@ -4,6 +4,17 @@ import type { Direction } from '../flashcards/types';
 export type ActivityType = 'flashcard' | 'choice' | 'type' | 'listen';
 export type PlayOutcome = 'correct' | 'wrong' | 'exposed';
 
+export type PlaySource = 'new' | 'review' | 'selected';
+export type PlayCount = 10 | 20 | 50 | 'all';
+
+export const ALL_COUNTS: PlayCount[] = [10, 20, 50, 'all'];
+
+export const SOURCE_LABELS: Record<PlaySource, string> = {
+  new: 'New',
+  review: 'Review',
+  selected: 'Selected',
+};
+
 export interface PlayItem {
   word: Word;
   activity: ActivityType;
