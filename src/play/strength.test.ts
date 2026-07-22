@@ -92,6 +92,35 @@ describe('cardStrength', () => {
   it('treats stability of a month or more as solid', () => {
     expect(cardStrength(makeCard({ stability: 60 }), NOW)).toBe('solid');
   });
+
+  // Boundary cases: every threshold below is a strict `<` comparison, so the
+  // value exactly at the boundary belongs to the *next* (stronger) bucket.
+  // An accidental `<=` would misclassify these without any other test noticing.
+  it('treats stability of exactly 1 as shaky, not just-seen', () => {
+    expect(cardStrength(makeCard({ stability: 1 }), NOW)).toBe('shaky');
+  });
+
+  it('treats stability of exactly 7 as getting-solid, not shaky', () => {
+    expect(cardStrength(makeCard({ stability: 7 }), NOW)).toBe('getting-solid');
+  });
+
+  it('treats stability of exactly 30 as solid, not getting-solid', () => {
+    expect(cardStrength(makeCard({ stability: 30 }), NOW)).toBe('solid');
+  });
+
+  // The retrievability threshold (0.7) can't be hit exactly with a float
+  // literal: solving R(t) = 0.7 for t/S gives an irrational ratio
+  // (t = S * 4.4372...), so any literal day count would only ever land near
+  // it, not on it. Bracket it instead with values just above and just below,
+  // confirmed by `retrievability` itself before asserting the bucket.
+  it('brackets the retrievability boundary at 0.7', () => {
+    const justAbove = makeCard({ stability: 10, lastReview: daysAgo(44) });
+    const justBelow = makeCard({ stability: 10, lastReview: daysAgo(45) });
+    expect(retrievability(justAbove, NOW)).toBeGreaterThan(0.7);
+    expect(retrievability(justBelow, NOW)).toBeLessThan(0.7);
+    expect(cardStrength(justAbove, NOW)).toBe('getting-solid');
+    expect(cardStrength(justBelow, NOW)).toBe('almost-forgotten');
+  });
 });
 
 describe('wordStrength', () => {
