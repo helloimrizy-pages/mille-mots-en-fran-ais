@@ -90,7 +90,7 @@ export function PlayModal({ words, selected, open, onClose, forceSource }: Props
 
   const start = () => {
     savePlaySettings(settings);
-    const queue = buildPlayQueue({ selected: preview.words, pool: words, settings });
+    const queue = buildPlayQueue({ selected: preview.words, pool: words, settings, cards: api.cards });
     if (queue.length === 0) return;
     setState({ kind: 'session', queue, index: 0, streak: 0, result: emptyPlayResult(Date.now()) });
   };

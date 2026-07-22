@@ -28,20 +28,27 @@ separate subsystem and get their own spec afterwards.
 | Entry point | One Play button; source picked on the setup screen |
 | Session size | Chooser: 10 / 20 / 50 / all |
 | Daily new-word cap | Removed entirely — `newPerDay` and the daily counter are deleted |
-| Direction handling | Review queues by word; `buildPlayQueue` keeps randomising direction |
+| Direction handling | Review queues by word; `buildPlayQueue` restricts each word's quiz direction to directions already studied |
 
 ### Why Review queues by word, not by card
 
 FSRS tracks each direction as its own card, so the strictly correct design would
 queue `(word, direction)` pairs and quiz each in its own direction. That was
 rejected as too invasive for the value: it forces `buildPlayQueue` to stop
-choosing directions, and flashcard/listen activities are hardcoded `fr-en` so
-they would have to be withheld from `en-fr` cards.
+picking directions freely, and flashcard/listen activities are hardcoded
+`fr-en` so they would have to be withheld from words never studied that way.
 
-The accepted cost: a word can be pulled because its `fr-en` card is overdue and
-then be quizzed `en-fr`. The two schedules drift apart somewhat. Acceptable
-because both directions of a word are learned together in practice, and Study
-mode remains available for strict per-card scheduling.
+The accepted cost: `buildPlayQueue` restricts direction (and, for
+flashcard/listen, the whole activity) to what a word has actually been studied
+in — a genuinely new word is unrestricted, but a word only ever studied `en-fr`
+is never quizzed `fr-en`, and never gets flashcard/listen at all unless doing
+so would otherwise leave nothing to play. What is *not* guaranteed is that the
+specific card quizzed is the one that was due — a word can still be pulled
+because its `fr-en` card is overdue and then be quizzed `en-fr` if both
+directions have been studied. No new cards are manufactured in a direction the
+user has never seen. Acceptable because both directions of a word are learned
+together in practice, and Study mode remains available for strict per-card
+scheduling.
 
 ## Core logic
 
@@ -123,11 +130,17 @@ selectPlayWords({
 
 `count` is `10 | 20 | 50 | 'all'`.
 
-### `buildPlayQueue` — unchanged
+### `buildPlayQueue` — direction restricted to studied directions
 
-It keeps randomising direction per activity. `selectPlayWords` feeds its
-existing `selected` parameter. `distractors.ts` and all four activity components
-are untouched.
+It takes an optional `cards` map. For each word, `choice`/`type` direction is
+picked at random from the directions actually studied (a card with `state !==
+'new'`) instead of from both; `flashcard`/`listen` stay hardcoded `fr-en`, and
+are dropped for a word studied only `en-fr` — unless that would leave no
+activity enabled at all, in which case the full enabled list is used rather
+than emitting nothing for the word. A word with no studied directions (a
+genuinely new word) is unrestricted, exactly as before this fix, and so is any
+caller that omits `cards`. `selectPlayWords` feeds its existing `selected`
+parameter. `distractors.ts` and all four activity components are untouched.
 
 ### Extended settings — `src/play/types.ts`
 
@@ -233,20 +246,21 @@ anything else  → existing backup-and-reset path
 - `playStorage.test.ts` — the three new fields, plus loading old-shape settings.
 - `FlashcardContext.test.tsx` — drop 3 daily-counter tests.
 - `useSession.test.ts` — drop 5 `newPerDay` cap tests.
+- `buildPlayQueue.test.ts` — direction and activity list restricted to
+  directions already studied, plus the empty-list fallback.
 
 ## Files
 
 **New** — `src/play/strength.ts`, `src/play/selectWords.ts`, and their tests
 
 **Modified** — `src/play/types.ts`, `src/play/playStorage.ts`,
-`src/play/components/PlayModal.tsx`, `src/play/components/PlaySetup.tsx`,
-`src/play/components/PlayBar.tsx`, `src/App.tsx`, `src/flashcards/types.ts`,
-`src/flashcards/storage.ts`, `src/flashcards/useSession.ts`,
-`src/flashcards/components/SettingsPanel.tsx`,
+`src/play/buildPlayQueue.ts`, `src/play/components/PlayModal.tsx`,
+`src/play/components/PlaySetup.tsx`, `src/play/components/PlayBar.tsx`,
+`src/App.tsx`, `src/flashcards/types.ts`, `src/flashcards/storage.ts`,
+`src/flashcards/useSession.ts`, `src/flashcards/components/SettingsPanel.tsx`,
 `src/contexts/FlashcardContext.tsx`, and 4 test files
 
-**Untouched** — `buildPlayQueue.ts`, `distractors.ts`, all four activity
-components, `fsrs.ts`
+**Untouched** — `distractors.ts`, all four activity components, `fsrs.ts`
 
 ## Follow-up
 
