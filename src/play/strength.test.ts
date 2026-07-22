@@ -3,7 +3,10 @@ import { forgetting_curve, generatorParameters } from 'ts-fsrs';
 import type { Word } from '../types';
 import type { CardState, Direction } from '../flashcards/types';
 import { cardKey } from '../flashcards/types';
-import { bucketCounts, cardStrength, retrievability, wordStrength } from './strength';
+import {
+  bucketCounts, cardStrength, retrievability, wordStrength,
+  REVIEW_STRENGTHS, STRENGTH_LABELS, STRENGTH_ORDER,
+} from './strength';
 
 const NOW = new Date('2026-07-22T12:00:00Z');
 const MS_PER_DAY = 86_400_000;
@@ -184,5 +187,18 @@ describe('bucketCounts', () => {
     expect(counts.shaky).toBe(1);
     expect(counts.new).toBe(1);
     expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(3);
+  });
+});
+
+describe('STRENGTH_ORDER, REVIEW_STRENGTHS, STRENGTH_LABELS', () => {
+  it('REVIEW_STRENGTHS excludes new and has five entries', () => {
+    expect(REVIEW_STRENGTHS).not.toContain('new');
+    expect(REVIEW_STRENGTHS.length).toBe(5);
+  });
+
+  it('STRENGTH_LABELS has an entry for every STRENGTH_ORDER member', () => {
+    for (const s of STRENGTH_ORDER) {
+      expect(STRENGTH_LABELS[s]).toBeTruthy();
+    }
   });
 });

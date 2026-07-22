@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Word } from '../types';
 import type { CardState, Direction } from '../flashcards/types';
 import { cardKey } from '../flashcards/types';
+import { bucketCounts } from './strength';
 import { countDue, selectPlayWords } from './selectWords';
 
 const NOW = new Date('2026-07-22T12:00:00Z');
@@ -178,5 +179,44 @@ describe('countDue', () => {
 
   it('is zero for unseen words', () => {
     expect(countDue([makeWord(1)], {}, NOW)).toBe(0);
+  });
+});
+
+// The spec's headline invariant: every word lands in exactly one of the New
+// pool or the Review pool. Two separate call sites encode the same
+// "has this word been studied" predicate — selectPlayWords via seenCards, and
+// wordStrength via the same helper — so this pins them against drifting apart.
+describe('new/review partition', () => {
+  it('places every word in exactly one of New or Review, agreeing with bucketCounts.new', () => {
+    const words = [
+      makeWord(1), // no cards at all
+      makeWord(2), // a stored card, but in state 'new'
+      makeWord(3), // studied fr-en only
+      makeWord(4), // studied en-fr only
+      makeWord(5), // studied both directions
+    ];
+    const cards = Object.fromEntries([
+      seen(2, 'fr-en', { state: 'new' }),
+      seen(3, 'fr-en'),
+      seen(4, 'en-fr'),
+      seen(5, 'fr-en', { stability: 60 }),
+      seen(5, 'en-fr', { stability: 3 }),
+    ]);
+
+    const counts = bucketCounts(words, cards, NOW);
+    const newWords = selectPlayWords({ ...base(words, cards), source: 'new' });
+    const reviewWords = selectPlayWords({ ...base(words, cards), source: 'review' });
+
+    expect(counts.new).toBe(newWords.length);
+    expect(newWords.map((w) => w.id).sort()).toEqual([1, 2]);
+    expect(reviewWords.map((w) => w.id).sort()).toEqual([3, 4, 5]);
+
+    const newIds = new Set(newWords.map((w) => w.id));
+    const reviewIds = new Set(reviewWords.map((w) => w.id));
+    for (const id of newIds) expect(reviewIds.has(id)).toBe(false);
+
+    const covered = new Set([...newIds, ...reviewIds]);
+    expect(covered.size).toBe(words.length);
+    for (const word of words) expect(covered.has(word.id)).toBe(true);
   });
 });

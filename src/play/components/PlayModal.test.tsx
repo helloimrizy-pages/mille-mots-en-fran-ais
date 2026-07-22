@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FlashcardProvider } from '../../contexts/FlashcardContext';
+import { STORAGE_KEY } from '../../flashcards/storage';
 import type { Word } from '../../types';
 import type { PlaySource } from '../types';
 import { PlayModal } from './PlayModal';
@@ -65,5 +66,35 @@ describe('PlayModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Review' }));
     expect(screen.getByText(/Nothing to review yet/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start playing/i })).toBeDisabled();
+  });
+
+  it('starts a Review session when a card is actually due', async () => {
+    const words = Array.from({ length: 5 }, (_, i) => makeWord(i + 1));
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    // Seed localStorage directly with a v2 blob containing one due card:
+    // FlashcardProvider reads via storage.load() synchronously on mount, so
+    // this is in place before PlayModal ever computes its setup preview.
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      version: 2,
+      cards: {
+        '1:fr-en': {
+          wordId: 1, direction: 'fr-en',
+          stability: 10, difficulty: 5,
+          elapsedDays: 20, scheduledDays: 10, reps: 3, lapses: 0,
+          state: 'review',
+          lastReview: new Date(now - 20 * dayMs).toISOString(),
+          due: new Date(now - 1 * dayMs).toISOString(),
+        },
+      },
+      log: [],
+      settings: { requestRetention: 0.9, typedCheck: false, lastGoal: 20, lastFilter: [], lastDirections: [] },
+    }));
+
+    renderModal(words);
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    expect(screen.getByRole('button', { name: /start playing/i })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: /start playing/i }));
+    expect(screen.getByLabelText(/session progress/i)).toBeInTheDocument();
   });
 });
