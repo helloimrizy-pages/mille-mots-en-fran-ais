@@ -53,14 +53,17 @@ export type Strength =
   | 'shaky' | 'getting-solid' | 'solid';
 ```
 
-Retrievability uses the FSRS-5 forgetting curve, written out rather than reached
-for inside `ts-fsrs`, so it stays deterministic and directly testable:
+Retrievability is delegated to `ts-fsrs`'s own `forgetting_curve(w, t, S)`,
+called with the weights from `generatorParameters()` computed once at module
+scope, rather than a formula written out by hand. This keeps it in lockstep
+with whichever FSRS version the pinned `ts-fsrs` release implements — a
+hard-coded curve goes stale the moment the library's default version changes,
+which is exactly what happened here (the code shipped with the FSRS-5 curve
+while `ts-fsrs@5.3.2`'s defaults are already FSRS-6). Under FSRS-6 the `R < 0.7`
+threshold below fires near `t ≈ 9.3·S`, not the `t ≈ 4.4·S` an FSRS-5 curve
+would give.
 
-```
-R(t) = (1 + (19/81) · t/S)^(-0.5)
-```
-
-where `t` is days since `lastReview` and `S` is `stability`. For a card with no
+`t` is days since `lastReview` and `S` is `stability`. For a card with no
 `lastReview`, `R` is treated as `0`.
 
 Bucket for a **card**, first match wins:

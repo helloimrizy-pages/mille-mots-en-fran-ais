@@ -1,3 +1,4 @@
+import { forgetting_curve, generatorParameters } from 'ts-fsrs';
 import type { Word } from '../types';
 import { cardKey, type CardState, type Direction } from '../flashcards/types';
 
@@ -26,10 +27,10 @@ export const STRENGTH_LABELS: Record<Strength, string> = {
   'solid': 'Solid',
 };
 
-// FSRS-5 forgetting curve. Written out rather than taken from ts-fsrs so the
-// maths stays deterministic and directly testable.
-const DECAY = -0.5;
-const FACTOR = 19 / 81;
+// Computed once at module scope from ts-fsrs's own defaults, so the curve
+// tracks whichever FSRS version the pinned library implements (currently
+// FSRS-6) instead of going stale against a hard-coded formula.
+const FSRS_WEIGHTS = generatorParameters().w;
 const MS_PER_DAY = 86_400_000;
 const ALMOST_FORGOTTEN_BELOW = 0.7;
 
@@ -39,7 +40,7 @@ const DIRECTIONS: Direction[] = ['fr-en', 'en-fr'];
 export function retrievability(card: CardState, now: Date): number {
   if (!card.lastReview || card.stability <= 0) return 0;
   const elapsedDays = Math.max(0, (now.getTime() - new Date(card.lastReview).getTime()) / MS_PER_DAY);
-  return Math.pow(1 + FACTOR * (elapsedDays / card.stability), DECAY);
+  return forgetting_curve(FSRS_WEIGHTS, elapsedDays, card.stability);
 }
 
 export function cardStrength(card: CardState | undefined, now: Date): Strength {

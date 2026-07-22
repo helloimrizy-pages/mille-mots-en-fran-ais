@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { forgetting_curve, generatorParameters } from 'ts-fsrs';
 import type { Word } from '../types';
 import type { CardState, Direction } from '../flashcards/types';
 import { cardKey } from '../flashcards/types';
@@ -52,6 +53,21 @@ describe('retrievability', () => {
     const older = retrievability(makeCard({ lastReview: daysAgo(20) }), NOW);
     expect(older).toBeLessThan(recent);
   });
+
+  // Regression guard for the FSRS-5-vs-FSRS-6 mismatch: `retrievability` must
+  // track whatever curve ts-fsrs's own `generatorParameters()` implements,
+  // not a hard-coded formula that can go stale when the library's defaults
+  // change version. Verified directly against the installed ts-fsrs release.
+  it('agrees with ts-fsrs\'s own forgetting_curve for a range of (t, S) pairs', () => {
+    const w = generatorParameters().w;
+    const cases: Array<[t: number, s: number]> = [
+      [0, 10], [10, 10], [45, 10], [92, 10], [93, 10], [20, 5], [100, 50],
+    ];
+    for (const [t, s] of cases) {
+      const card = makeCard({ stability: s, lastReview: daysAgo(t) });
+      expect(retrievability(card, NOW)).toBeCloseTo(forgetting_curve(w, t, s), 10);
+    }
+  });
 });
 
 describe('cardStrength', () => {
@@ -68,7 +84,9 @@ describe('cardStrength', () => {
   });
 
   it('treats retrievability below 0.7 as almost-forgotten', () => {
-    const card = makeCard({ stability: 10, lastReview: daysAgo(45) });
+    // Under FSRS-6 the 0.7 crossing for S=10 sits at t ≈ 92.9 days (see the
+    // boundary-bracketing test below), so 150 days is comfortably past it.
+    const card = makeCard({ stability: 10, lastReview: daysAgo(150) });
     expect(retrievability(card, NOW)).toBeLessThan(0.7);
     expect(cardStrength(card, NOW)).toBe('almost-forgotten');
   });
@@ -109,13 +127,15 @@ describe('cardStrength', () => {
   });
 
   // The retrievability threshold (0.7) can't be hit exactly with a float
-  // literal: solving R(t) = 0.7 for t/S gives an irrational ratio
-  // (t = S * 4.4372...), so any literal day count would only ever land near
-  // it, not on it. Bracket it instead with values just above and just below,
-  // confirmed by `retrievability` itself before asserting the bucket.
+  // literal: solving R(t) = 0.7 for t/S under the FSRS-6 curve gives an
+  // irrational ratio (t ≈ S * 9.29), so any literal day count would only ever
+  // land near it, not on it. Bracket it instead with values just above and
+  // just below, confirmed by `retrievability` itself before asserting the
+  // bucket. (Computed against the installed ts-fsrs: for S=10, t=92 gives
+  // R ≈ 0.7009 and t=93 gives R ≈ 0.6999.)
   it('brackets the retrievability boundary at 0.7', () => {
-    const justAbove = makeCard({ stability: 10, lastReview: daysAgo(44) });
-    const justBelow = makeCard({ stability: 10, lastReview: daysAgo(45) });
+    const justAbove = makeCard({ stability: 10, lastReview: daysAgo(92) });
+    const justBelow = makeCard({ stability: 10, lastReview: daysAgo(93) });
     expect(retrievability(justAbove, NOW)).toBeGreaterThan(0.7);
     expect(retrievability(justBelow, NOW)).toBeLessThan(0.7);
     expect(cardStrength(justAbove, NOW)).toBe('getting-solid');
