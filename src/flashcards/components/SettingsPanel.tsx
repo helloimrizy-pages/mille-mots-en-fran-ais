@@ -27,22 +27,6 @@ export function SettingsPanel() {
   return (
     <div className="flex flex-col gap-6 p-4">
       <section>
-        <label className="block text-sm font-medium mb-2">
-          New words per day: <span className="tabular-nums font-semibold">{settings.newPerDay}</span>
-        </label>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={settings.newPerDay}
-          onChange={(e) => updateSettings({ newPerDay: Number(e.target.value) })}
-          className="w-full accent-emphasis"
-        />
-        <p className="text-[11px] text-text-subtle mt-1">How many new cards can enter your daily queue.</p>
-      </section>
-
-      <section>
         <label className="flex items-center justify-between cursor-pointer">
           <span className="text-sm font-medium">Type to check answer</span>
           <input

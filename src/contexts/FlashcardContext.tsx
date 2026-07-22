@@ -4,10 +4,8 @@ import { importJson as storageImport, exportJson as storageExport, load, save } 
 import {
   MAX_LOG_ENTRIES,
   cardKey,
-  localDateString,
   makeEmptyCard,
   type CardState,
-  type DailyCounter,
   type Direction,
   type Grade,
   type ReviewLogEntry,
@@ -19,7 +17,6 @@ export interface FlashcardApi {
   cards: Record<string, CardState>;
   log: ReviewLogEntry[];
   settings: StudySettings;
-  daily: DailyCounter;
   dueCount: (now?: Date) => number;
   getCard: (wordId: number, direction: Direction) => CardState;
   grade: (wordId: number, direction: Direction, grade: Grade, now?: Date) => void;
@@ -30,12 +27,6 @@ export interface FlashcardApi {
 }
 
 export const FlashcardContext = createContext<FlashcardApi | null>(null);
-
-function rolloverDaily(daily: DailyCounter, now: Date): DailyCounter {
-  const today = localDateString(now);
-  if (daily.date === today) return daily;
-  return { date: today, newIntroduced: 0 };
-}
 
 export function FlashcardProvider({ children }: { children: ReactNode }) {
   const [blob, setBlob] = useState<StoredBlob>(() => load());
@@ -64,9 +55,7 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
     (wordId: number, direction: Direction, g: Grade, now: Date = new Date()) => {
       setBlob((prev) => {
         const key = cardKey(wordId, direction);
-        const existing = prev.cards[key];
-        const wasNew = !existing || existing.state === 'new';
-        const before = existing ?? makeEmptyCard(wordId, direction, now);
+        const before = prev.cards[key] ?? makeEmptyCard(wordId, direction, now);
         const { card: next } = gradeCard(before, g, now, { requestRetention: prev.settings.requestRetention });
         const logEntry: ReviewLogEntry = {
           wordId,
@@ -77,16 +66,10 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
           scheduledDays: next.scheduledDays,
           state: next.state,
         };
-        const nextLog = [...prev.log, logEntry].slice(-MAX_LOG_ENTRIES);
-        const rolled = rolloverDaily(prev.daily, now);
-        const daily: DailyCounter = wasNew
-          ? { ...rolled, newIntroduced: rolled.newIntroduced + 1 }
-          : rolled;
         return {
           ...prev,
           cards: { ...prev.cards, [key]: next },
-          log: nextLog,
-          daily,
+          log: [...prev.log, logEntry].slice(-MAX_LOG_ENTRIES),
         };
       });
     },
@@ -99,11 +82,10 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
 
   const resetAll = useCallback(() => {
     setBlob((prev) => ({
-      version: 1,
+      version: 2,
       cards: {},
       log: [],
       settings: prev.settings,
-      daily: { date: localDateString(), newIntroduced: 0 },
     }));
   }, []);
 
@@ -132,7 +114,6 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
     cards: blob.cards,
     log: blob.log,
     settings: blob.settings,
-    daily: blob.daily,
     dueCount,
     getCard,
     grade,

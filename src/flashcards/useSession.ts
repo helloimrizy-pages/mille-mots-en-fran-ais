@@ -73,8 +73,7 @@ export function planSession({ words, api, filter, directions, goal, now }: Sessi
 
   const shuffledFresh = shuffleSeeded(fresh).sort((a, b) => a.word.rank - b.word.rank);
 
-  const dailyRemaining = Math.max(0, api.settings.newPerDay - api.daily.newIntroduced);
-  const newAvailable = Math.min(shuffledFresh.length, dailyRemaining);
+  const newAvailable = shuffledFresh.length;
   const dueCount = due.length;
 
   const goalNum = goal === 'unlimited' ? Number.POSITIVE_INFINITY : goal;
@@ -101,9 +100,6 @@ export function useSession(inputs: SessionInputs): SessionPlan {
     [
       inputs.words,
       inputs.api.cards,
-      inputs.api.settings.newPerDay,
-      inputs.api.daily.newIntroduced,
-      inputs.api.daily.date,
       inputs.filter.join(','),
       inputs.directions.join(','),
       inputs.goal,
