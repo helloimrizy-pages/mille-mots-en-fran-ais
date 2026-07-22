@@ -112,7 +112,7 @@ export default function App() {
       )}
       <PlayModal
         selected={selectedWords}
-        pool={words ?? []}
+        words={words ?? []}
         open={playOpen}
         onClose={() => setPlayOpen(false)}
       />
