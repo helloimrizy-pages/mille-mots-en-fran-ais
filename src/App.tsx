@@ -1,4 +1,5 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
+import { Play } from 'lucide-react';
 import { TopBar } from './components/TopBar';
 import { WordList } from './components/WordList';
 import { StudyModal } from './flashcards/components/StudyModal';
@@ -8,6 +9,7 @@ import { useAudio } from './hooks/useAudio';
 import { useFilteredWords, type PosFilter, type SortMode } from './hooks/useFilteredWords';
 import { usePreferences } from './hooks/usePreferences';
 import type { Word } from './types';
+import type { PlaySource } from './play/types';
 
 interface FilterState { search: string; pos: PosFilter; sort: SortMode; }
 type FilterAction =
@@ -33,7 +35,7 @@ export default function App() {
   const [studyOpen, setStudyOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [playOpen, setPlayOpen] = useState(false);
+  const [play, setPlay] = useState<{ open: boolean; force?: PlaySource }>({ open: false });
 
   useEffect(() => {
     fetch('/words.json')
@@ -60,7 +62,13 @@ export default function App() {
     });
   };
 
-  const selectedWords = (words ?? []).filter((w) => selectedIds.has(w.id));
+  // Memoized so PlayModal's setup preview — which App renders unconditionally —
+  // doesn't see a new array identity (and redo its bucket work) on every
+  // keystroke in the search box.
+  const selectedWords = useMemo(
+    () => (words ?? []).filter((w) => selectedIds.has(w.id)),
+    [words, selectedIds],
+  );
 
   return (
     <div className="min-h-screen max-w-2xl mx-auto">
@@ -107,14 +115,25 @@ export default function App() {
           count={selectedIds.size}
           onSelectAll={() => setSelectedIds(new Set(filtered.map((w) => w.id)))}
           onClear={() => setSelectedIds(new Set())}
-          onPlay={() => setPlayOpen(true)}
+          onPlay={() => setPlay({ open: true, force: 'selected' })}
         />
       )}
+      {!selectMode && words !== null && (
+        <button
+          type="button"
+          onClick={() => setPlay({ open: true })}
+          aria-label="Play"
+          className="fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 px-5 py-3 rounded-pill bg-emphasis text-surface font-medium shadow-lg hover:bg-emphasis/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40"
+        >
+          <Play size={16} /> Play
+        </button>
+      )}
       <PlayModal
+        words={words ?? []}
         selected={selectedWords}
-        pool={words ?? []}
-        open={playOpen}
-        onClose={() => setPlayOpen(false)}
+        open={play.open}
+        onClose={() => setPlay({ open: false })}
+        {...(play.force ? { forceSource: play.force } : {})}
       />
       <StudyModal
         words={words ?? []}

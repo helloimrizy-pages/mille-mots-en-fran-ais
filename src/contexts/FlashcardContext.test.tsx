@@ -37,32 +37,6 @@ describe('FlashcardProvider', () => {
     expect(result.current.log[0]!.wordId).toBe(1);
   });
 
-  it('grading a new card increments daily.newIntroduced', () => {
-    const { result } = renderHook(() => useFlashcardState(), { wrapper });
-    const before = result.current.daily.newIntroduced;
-    act(() => { result.current.grade(1, 'fr-en', 3); });
-    expect(result.current.daily.newIntroduced).toBe(before + 1);
-  });
-
-  it('grading an already-reviewed card does not increment newIntroduced', () => {
-    const { result } = renderHook(() => useFlashcardState(), { wrapper });
-    act(() => { result.current.grade(1, 'fr-en', 3); });
-    const after1 = result.current.daily.newIntroduced;
-    act(() => { result.current.grade(1, 'fr-en', 3, new Date('2026-04-23T13:00:00Z')); });
-    expect(result.current.daily.newIntroduced).toBe(after1);
-  });
-
-  it('daily counter resets when local date changes', () => {
-    const { result } = renderHook(() => useFlashcardState(), { wrapper });
-    act(() => { result.current.grade(1, 'fr-en', 3); });
-    expect(result.current.daily.newIntroduced).toBe(1);
-    act(() => {
-      result.current.grade(2, 'fr-en', 3, new Date('2026-04-24T12:00:00Z'));
-    });
-    expect(result.current.daily.newIntroduced).toBe(1);
-    expect(result.current.daily.date).not.toBe('2026-04-23');
-  });
-
   it('dueCount counts cards past their due date', () => {
     const { result } = renderHook(() => useFlashcardState(), { wrapper });
     act(() => { result.current.grade(1, 'fr-en', 3); });
@@ -80,8 +54,8 @@ describe('FlashcardProvider', () => {
 
   it('updateSettings merges patch', () => {
     const { result } = renderHook(() => useFlashcardState(), { wrapper });
-    act(() => { result.current.updateSettings({ newPerDay: 5, typedCheck: true }); });
-    expect(result.current.settings.newPerDay).toBe(5);
+    act(() => { result.current.updateSettings({ requestRetention: 0.85, typedCheck: true }); });
+    expect(result.current.settings.requestRetention).toBe(0.85);
     expect(result.current.settings.typedCheck).toBe(true);
   });
 

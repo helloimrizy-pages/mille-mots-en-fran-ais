@@ -1,28 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { Word } from '../../types';
 import { useFlashcardState } from '../../flashcards/useFlashcardState';
 import { buildPlayQueue } from '../buildPlayQueue';
 import { loadPlaySettings, savePlaySettings } from '../playStorage';
-import { emptyPlayResult, type PlayItem, type PlayOutcome, type PlayResult, type PlaySettings } from '../types';
+import { countDue, selectPlayWords } from '../selectWords';
+import { bucketCounts, type Strength } from '../strength';
+import { emptyPlayResult, type PlayItem, type PlayOutcome, type PlayResult, type PlaySettings, type PlaySource } from '../types';
 import { FlashcardActivity } from './activities/FlashcardActivity';
 import { MultipleChoiceActivity } from './activities/MultipleChoiceActivity';
 import { TypeActivity } from './activities/TypeActivity';
 import { ListenActivity } from './activities/ListenActivity';
-import { PlaySetup } from './PlaySetup';
+import { PlaySetup, type SetupPreview } from './PlaySetup';
 import { PlaySummary } from './PlaySummary';
 
 interface Props {
+  /** The full word list — the pool for both source selection and distractors. */
+  words: Word[];
   selected: Word[];
-  pool: Word[];
   open: boolean;
   onClose: () => void;
+  /** When set, the source is fixed and its picker is hidden. */
+  forceSource?: PlaySource;
 }
 
 type PlayState =
   | { kind: 'setup' }
   | { kind: 'session'; queue: PlayItem[]; index: number; streak: number; result: PlayResult }
   | { kind: 'summary'; result: PlayResult };
+
+const EMPTY_BUCKET_COUNTS: Record<Strength, number> = {
+  'new': 0, 'almost-forgotten': 0, 'just-seen': 0,
+  'shaky': 0, 'getting-solid': 0, 'solid': 0,
+};
 
 function renderActivity(item: PlayItem, onResult: (o: PlayOutcome) => void) {
   switch (item.activity) {
@@ -33,10 +43,45 @@ function renderActivity(item: PlayItem, onResult: (o: PlayOutcome) => void) {
   }
 }
 
-export function PlayModal({ selected, pool, open, onClose }: Props) {
+export function PlayModal({ words, selected, open, onClose, forceSource }: Props) {
   const api = useFlashcardState();
   const [settings, setSettings] = useState<PlaySettings>(() => loadPlaySettings());
   const [state, setState] = useState<PlayState>({ kind: 'setup' });
+
+  const source = forceSource ?? settings.source;
+
+  // Recomputed on every settings change so the setup screen's counts and empty
+  // states always describe the session that Start would actually begin. Only
+  // worth doing while the setup screen is actually on screen: measured at
+  // 0.32ms on a fresh deck but 9.47ms on a fully studied 999-word corpus, and
+  // App renders PlayModal unconditionally, so an unconditional memo redoes
+  // this work on every App re-render (every search-box keystroke) even while
+  // the modal is closed, and again after every graded answer mid-session. The
+  // hook itself must stay unconditional — the gate lives inside the callback.
+  const preview = useMemo<SetupPreview>(() => {
+    if (!open || state.kind !== 'setup') {
+      return { words: [], dueCount: 0, counts: EMPTY_BUCKET_COUNTS, selectedCount: selected.length };
+    }
+    // `now` is deliberately not a dependency: a setup screen left open across
+    // a due boundary shows slightly stale counts until the next settings tap,
+    // which is accepted rather than driven by a timer.
+    const now = new Date();
+    const resolved = selectPlayWords({
+      source,
+      words,
+      cards: api.cards,
+      selected,
+      buckets: settings.buckets,
+      count: settings.wordCount,
+      now,
+    });
+    return {
+      words: resolved,
+      dueCount: countDue(resolved, api.cards, now),
+      counts: bucketCounts(words, api.cards, now),
+      selectedCount: selected.length,
+    };
+  }, [open, state.kind, source, words, api.cards, selected, settings.buckets, settings.wordCount]);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -62,7 +107,7 @@ export function PlayModal({ selected, pool, open, onClose }: Props) {
 
   const start = () => {
     savePlaySettings(settings);
-    const queue = buildPlayQueue({ selected, pool, settings });
+    const queue = buildPlayQueue({ selected: preview.words, pool: words, settings, cards: api.cards });
     if (queue.length === 0) return;
     setState({ kind: 'session', queue, index: 0, streak: 0, result: emptyPlayResult(Date.now()) });
   };
@@ -138,10 +183,11 @@ export function PlayModal({ selected, pool, open, onClose }: Props) {
         <div className="overflow-y-auto flex-1">
           {state.kind === 'setup' && (
             <PlaySetup
-              wordCount={selected.length}
               settings={settings}
               onSettingsChange={setSettings}
               onStart={start}
+              preview={preview}
+              {...(forceSource ? { forceSource } : {})}
             />
           )}
 

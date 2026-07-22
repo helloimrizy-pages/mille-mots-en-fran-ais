@@ -1,22 +1,30 @@
 import {
   DEFAULT_SETTINGS,
   MAX_LOG_ENTRIES,
-  localDateString,
+  type SessionGoal,
   type StoredBlob,
   type StudySettings,
 } from './types';
 
+// Deliberately keeps its "-v1" suffix even though CURRENT_VERSION is 2 — the
+// key must stay stable across migrations, or existing users' data would be
+// orphaned under a key nothing reads anymore.
 export const STORAGE_KEY = 'mille-mots-srs-v1';
+// Same "-v1" suffix, same reason: renaming it would orphan any backup written
+// before this migration shipped.
 export const BACKUP_KEY = 'mille-mots-srs-v1-backup';
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 
+const LEGAL_GOALS: SessionGoal[] = [10, 20, 50, 'unlimited'];
+
+// Builds the settings object key by key rather than spreading, so legacy fields
+// such as newPerDay are dropped rather than carried forward.
 function clampSettings(s: Partial<StudySettings>): StudySettings {
   const merged = { ...DEFAULT_SETTINGS, ...s };
   return {
-    ...merged,
-    newPerDay: Math.max(0, Math.min(100, Math.floor(merged.newPerDay))),
     requestRetention: Math.max(0.80, Math.min(0.95, merged.requestRetention)),
     typedCheck: !!merged.typedCheck,
+    lastGoal: LEGAL_GOALS.includes(merged.lastGoal) ? merged.lastGoal : DEFAULT_SETTINGS.lastGoal,
     lastFilter: Array.isArray(merged.lastFilter) ? merged.lastFilter : [],
     lastDirections: Array.isArray(merged.lastDirections) ? merged.lastDirections : [],
   };
@@ -28,7 +36,20 @@ export function emptyBlob(): StoredBlob {
     cards: {},
     log: [],
     settings: { ...DEFAULT_SETTINGS },
-    daily: { date: localDateString(), newIntroduced: 0 },
+  };
+}
+
+// v1 -> v2 only removes fields (settings.newPerDay and the daily counter), so a
+// single reader handles both versions: unknown keys are simply never copied.
+function migrate(parsed: Record<string, unknown>): StoredBlob | null {
+  const version = parsed.version;
+  if (version !== 1 && version !== CURRENT_VERSION) return null;
+  const obj = parsed as Partial<StoredBlob>;
+  return {
+    version: CURRENT_VERSION,
+    cards: obj.cards && typeof obj.cards === 'object' ? obj.cards : {},
+    log: Array.isArray(obj.log) ? obj.log.slice(-MAX_LOG_ENTRIES) : [],
+    settings: clampSettings(obj.settings ?? {}),
   };
 }
 
@@ -49,24 +70,22 @@ export function load(): StoredBlob {
   }
 
   if (!parsed || typeof parsed !== 'object') return emptyBlob();
-  const obj = parsed as Partial<StoredBlob>;
 
-  if (obj.version !== CURRENT_VERSION) {
+  const parsedObj = parsed as Record<string, unknown>;
+  if (parsedObj.version === 1) {
+    // localStorage is the only copy of a user's SRS history in this
+    // backend-less app. The migration below is lossless, but back up the raw
+    // v1 blob anyway before FlashcardContext's debounced save overwrites it
+    // with the migrated v2 shape ~250ms after mount.
+    try { localStorage.setItem(BACKUP_KEY, raw); } catch { /* quota */ }
+  }
+
+  const migrated = migrate(parsedObj);
+  if (!migrated) {
     try { localStorage.setItem(BACKUP_KEY, raw); } catch { /* quota */ }
     return emptyBlob();
   }
-
-  const blob: StoredBlob = {
-    version: CURRENT_VERSION,
-    cards: obj.cards && typeof obj.cards === 'object' ? obj.cards : {},
-    log: Array.isArray(obj.log) ? obj.log.slice(-MAX_LOG_ENTRIES) : [],
-    settings: clampSettings(obj.settings ?? {}),
-    daily: obj.daily && typeof obj.daily === 'object'
-      ? { date: String(obj.daily.date ?? localDateString()), newIntroduced: Number(obj.daily.newIntroduced) || 0 }
-      : { date: localDateString(), newIntroduced: 0 },
-  };
-
-  return blob;
+  return migrated;
 }
 
 export function save(blob: StoredBlob): void {
@@ -89,16 +108,7 @@ export function importJson(str: string): StoredBlob | null {
   try {
     const parsed = JSON.parse(str);
     if (!parsed || typeof parsed !== 'object') return null;
-    if (parsed.version !== CURRENT_VERSION) return null;
-    return {
-      version: CURRENT_VERSION,
-      cards: parsed.cards && typeof parsed.cards === 'object' ? parsed.cards : {},
-      log: Array.isArray(parsed.log) ? parsed.log.slice(-MAX_LOG_ENTRIES) : [],
-      settings: clampSettings(parsed.settings ?? {}),
-      daily: parsed.daily && typeof parsed.daily === 'object'
-        ? { date: String(parsed.daily.date ?? localDateString()), newIntroduced: Number(parsed.daily.newIntroduced) || 0 }
-        : { date: localDateString(), newIntroduced: 0 },
-    };
+    return migrate(parsed as Record<string, unknown>);
   } catch {
     return null;
   }

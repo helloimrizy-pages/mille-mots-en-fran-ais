@@ -32,7 +32,6 @@ export interface ReviewLogEntry {
 export type SessionGoal = 10 | 20 | 50 | 'unlimited';
 
 export interface StudySettings {
-  newPerDay: number;
   requestRetention: number;
   typedCheck: boolean;
   lastGoal: SessionGoal;
@@ -40,17 +39,11 @@ export interface StudySettings {
   lastDirections: Direction[];
 }
 
-export interface DailyCounter {
-  date: string;
-  newIntroduced: number;
-}
-
 export interface StoredBlob {
-  version: 1;
+  version: 2;
   cards: Record<string, CardState>;
   log: ReviewLogEntry[];
   settings: StudySettings;
-  daily: DailyCounter;
 }
 
 export const GRADE_LABELS: Record<Grade, string> = {
@@ -61,7 +54,6 @@ export const GRADE_LABELS: Record<Grade, string> = {
 };
 
 export const DEFAULT_SETTINGS: StudySettings = {
-  newPerDay: 20,
   requestRetention: 0.9,
   typedCheck: false,
   lastGoal: 20,
@@ -73,13 +65,6 @@ export const MAX_LOG_ENTRIES = 1000;
 
 export function cardKey(wordId: number, direction: Direction): string {
   return `${wordId}:${direction}`;
-}
-
-export function localDateString(d: Date = new Date()): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 export function makeEmptyCard(wordId: number, direction: Direction, now: Date = new Date()): CardState {

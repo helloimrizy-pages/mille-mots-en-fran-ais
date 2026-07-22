@@ -3,7 +3,7 @@ import { planSession } from './useSession';
 import type { FlashcardApi } from '../contexts/FlashcardContext';
 import type { Word } from '../types';
 import type { CardState, StudySettings } from './types';
-import { DEFAULT_SETTINGS, cardKey, localDateString } from './types';
+import { DEFAULT_SETTINGS, cardKey } from './types';
 
 const NOW = new Date('2026-04-23T12:00:00Z');
 
@@ -24,13 +24,11 @@ function makeWord(id: number, overrides: Partial<Word> = {}): Word {
 function makeApi(
   cards: Record<string, CardState> = {},
   settings: Partial<StudySettings> = {},
-  newIntroduced = 0,
 ): FlashcardApi {
   return {
     cards,
     log: [],
     settings: { ...DEFAULT_SETTINGS, ...settings },
-    daily: { date: localDateString(NOW), newIntroduced },
     dueCount: () => 0,
     getCard: () => ({} as CardState),
     grade: () => {},
@@ -53,13 +51,13 @@ function reviewCard(wordId: number, direction: 'fr-en' | 'en-fr', due: Date, sta
 }
 
 describe('planSession', () => {
-  it('returns new cards for a fresh deck capped by newPerDay', () => {
+  it('returns every new card for a fresh deck', () => {
     const words = Array.from({ length: 5 }, (_, i) => makeWord(i + 1));
     const plan = planSession({
-      words, api: makeApi({}, { newPerDay: 3 }),
-      filter: [], directions: [], goal: 'unlimited', now: NOW,
+      words, api: makeApi(),
+      filter: [], directions: ['fr-en'], goal: 'unlimited', now: NOW,
     });
-    expect(plan.queue.length).toBe(3);
+    expect(plan.queue.length).toBe(5);
     expect(plan.queue.every((c) => c.isNew)).toBe(true);
   });
 
@@ -70,7 +68,7 @@ describe('planSession', () => {
       [cardKey(1, 'fr-en')]: reviewCard(1, 'fr-en', past),
     };
     const plan = planSession({
-      words, api: makeApi(cards, { newPerDay: 10 }),
+      words, api: makeApi(cards),
       filter: [], directions: ['fr-en'], goal: 20, now: NOW,
     });
     expect(plan.queue[0]!.word.id).toBe(1);
@@ -78,29 +76,10 @@ describe('planSession', () => {
     expect(plan.queue.slice(1).every((c) => c.isNew)).toBe(true);
   });
 
-  it('respects newPerDay cap', () => {
-    const words = Array.from({ length: 10 }, (_, i) => makeWord(i + 1));
-    const plan = planSession({
-      words, api: makeApi({}, { newPerDay: 2 }, 0),
-      filter: [], directions: ['fr-en'], goal: 'unlimited', now: NOW,
-    });
-    expect(plan.queue.length).toBe(2);
-    expect(plan.newAvailable).toBe(2);
-  });
-
-  it('respects newIntroduced already consumed', () => {
-    const words = Array.from({ length: 5 }, (_, i) => makeWord(i + 1));
-    const plan = planSession({
-      words, api: makeApi({}, { newPerDay: 5 }, 3),
-      filter: [], directions: ['fr-en'], goal: 'unlimited', now: NOW,
-    });
-    expect(plan.queue.length).toBe(2);
-  });
-
   it('honors session goal', () => {
     const words = Array.from({ length: 50 }, (_, i) => makeWord(i + 1));
     const plan = planSession({
-      words, api: makeApi({}, { newPerDay: 50 }),
+      words, api: makeApi(),
       filter: [], directions: ['fr-en'], goal: 10, now: NOW,
     });
     expect(plan.queue.length).toBe(10);
@@ -113,7 +92,7 @@ describe('planSession', () => {
       makeWord(3, { pos: 'adjective' }),
     ];
     const plan = planSession({
-      words, api: makeApi({}, { newPerDay: 10 }),
+      words, api: makeApi(),
       filter: ['noun', 'verb'], directions: ['fr-en'], goal: 'unlimited', now: NOW,
     });
     expect(plan.queue.map((c) => c.word.pos).sort()).toEqual(['noun', 'verb']);
@@ -125,7 +104,7 @@ describe('planSession', () => {
       makeWord(2, { pos: 'verb' }),
     ];
     const plan = planSession({
-      words, api: makeApi({}, { newPerDay: 10 }),
+      words, api: makeApi(),
       filter: [], directions: ['fr-en'], goal: 'unlimited', now: NOW,
     });
     expect(plan.queue.length).toBe(2);
@@ -134,7 +113,7 @@ describe('planSession', () => {
   it('empty directions means both', () => {
     const words = [makeWord(1)];
     const plan = planSession({
-      words, api: makeApi({}, { newPerDay: 10 }),
+      words, api: makeApi(),
       filter: [], directions: [], goal: 'unlimited', now: NOW,
     });
     expect(plan.queue.map((c) => c.direction).sort()).toEqual(['en-fr', 'fr-en']);
@@ -145,7 +124,7 @@ describe('planSession', () => {
     const future = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
     const cards = { [cardKey(1, 'fr-en')]: reviewCard(1, 'fr-en', future) };
     const plan = planSession({
-      words, api: makeApi(cards, { newPerDay: 10 }),
+      words, api: makeApi(cards),
       filter: [], directions: ['fr-en'], goal: 'unlimited', now: NOW,
     });
     expect(plan.queue.length).toBe(0);
@@ -159,7 +138,7 @@ describe('planSession', () => {
       [cardKey(2, 'fr-en')]: reviewCard(2, 'fr-en', past),
     };
     const plan = planSession({
-      words, api: makeApi(cards, { newPerDay: 10 }),
+      words, api: makeApi(cards),
       filter: [], directions: ['fr-en'], goal: 'unlimited', now: NOW,
     });
     expect(plan.dueCount).toBe(2);
@@ -169,7 +148,7 @@ describe('planSession', () => {
   it('returns empty queue when filter excludes all cards', () => {
     const words = [makeWord(1, { pos: 'noun' })];
     const plan = planSession({
-      words, api: makeApi({}, { newPerDay: 10 }),
+      words, api: makeApi(),
       filter: ['verb'], directions: ['fr-en'], goal: 'unlimited', now: NOW,
     });
     expect(plan.queue.length).toBe(0);
