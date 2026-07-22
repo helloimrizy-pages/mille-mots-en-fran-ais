@@ -1,13 +1,21 @@
 import {
   DEFAULT_SETTINGS,
   MAX_LOG_ENTRIES,
+  type SessionGoal,
   type StoredBlob,
   type StudySettings,
 } from './types';
 
+// Deliberately keeps its "-v1" suffix even though CURRENT_VERSION is 2 — the
+// key must stay stable across migrations, or existing users' data would be
+// orphaned under a key nothing reads anymore.
 export const STORAGE_KEY = 'mille-mots-srs-v1';
+// Same "-v1" suffix, same reason: renaming it would orphan any backup written
+// before this migration shipped.
 export const BACKUP_KEY = 'mille-mots-srs-v1-backup';
 export const CURRENT_VERSION = 2;
+
+const LEGAL_GOALS: SessionGoal[] = [10, 20, 50, 'unlimited'];
 
 // Builds the settings object key by key rather than spreading, so legacy fields
 // such as newPerDay are dropped rather than carried forward.
@@ -16,7 +24,7 @@ function clampSettings(s: Partial<StudySettings>): StudySettings {
   return {
     requestRetention: Math.max(0.80, Math.min(0.95, merged.requestRetention)),
     typedCheck: !!merged.typedCheck,
-    lastGoal: merged.lastGoal,
+    lastGoal: LEGAL_GOALS.includes(merged.lastGoal) ? merged.lastGoal : DEFAULT_SETTINGS.lastGoal,
     lastFilter: Array.isArray(merged.lastFilter) ? merged.lastFilter : [],
     lastDirections: Array.isArray(merged.lastDirections) ? merged.lastDirections : [],
   };
@@ -63,7 +71,16 @@ export function load(): StoredBlob {
 
   if (!parsed || typeof parsed !== 'object') return emptyBlob();
 
-  const migrated = migrate(parsed as Record<string, unknown>);
+  const parsedObj = parsed as Record<string, unknown>;
+  if (parsedObj.version === 1) {
+    // localStorage is the only copy of a user's SRS history in this
+    // backend-less app. The migration below is lossless, but back up the raw
+    // v1 blob anyway before FlashcardContext's debounced save overwrites it
+    // with the migrated v2 shape ~250ms after mount.
+    try { localStorage.setItem(BACKUP_KEY, raw); } catch { /* quota */ }
+  }
+
+  const migrated = migrate(parsedObj);
   if (!migrated) {
     try { localStorage.setItem(BACKUP_KEY, raw); } catch { /* quota */ }
     return emptyBlob();

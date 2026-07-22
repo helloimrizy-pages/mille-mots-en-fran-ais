@@ -118,7 +118,7 @@ export default function App() {
           onPlay={() => setPlay({ open: true, force: 'selected' })}
         />
       )}
-      {!selectMode && (
+      {!selectMode && words !== null && (
         <button
           type="button"
           onClick={() => setPlay({ open: true })}

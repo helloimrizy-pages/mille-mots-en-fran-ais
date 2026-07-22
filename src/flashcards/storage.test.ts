@@ -53,7 +53,31 @@ describe('load', () => {
     expect(blob.settings.lastDirections).toEqual([]);
   });
 
-  it('migrates a v1 blob, preserving cards and log', () => {
+  it('falls back to the default lastGoal when the stored value is not a legal goal', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      version: 2,
+      cards: {},
+      log: [],
+      settings: { requestRetention: 0.9, typedCheck: false, lastGoal: 'bogus', lastFilter: [], lastDirections: [] },
+    }));
+    const blob = load();
+    expect(blob.settings.lastGoal).toBe(DEFAULT_SETTINGS.lastGoal);
+  });
+
+  it('accepts every legal lastGoal value unchanged', () => {
+    for (const goal of [10, 20, 50, 'unlimited'] as const) {
+      localStorage.clear();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        version: 2,
+        cards: {},
+        log: [],
+        settings: { requestRetention: 0.9, typedCheck: false, lastGoal: goal, lastFilter: [], lastDirections: [] },
+      }));
+      expect(load().settings.lastGoal).toBe(goal);
+    }
+  });
+
+  it('migrates a v1 blob, preserving cards and log, and writes a backup', () => {
     const card = {
       wordId: 7, direction: 'fr-en' as const,
       stability: 4, difficulty: 6,
@@ -75,7 +99,11 @@ describe('load', () => {
     expect(blob.version).toBe(2);
     expect(blob.cards['7:fr-en']).toEqual(card);
     expect(blob.log.length).toBe(1);
-    expect(localStorage.getItem(BACKUP_KEY)).toBeNull();
+    // localStorage is the only copy of a user's SRS history in this
+    // backend-less app, so the raw v1 blob must be backed up before the
+    // debounced save overwrites it with the migrated v2 shape.
+    expect(localStorage.getItem(BACKUP_KEY)).not.toBeNull();
+    expect(localStorage.getItem(BACKUP_KEY)).toContain('"version":1');
   });
 
   it('drops newPerDay and daily when migrating', () => {
