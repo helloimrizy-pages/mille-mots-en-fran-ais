@@ -1,5 +1,6 @@
 import type { Word } from '../types';
 import type { Direction } from '../flashcards/types';
+import type { Strength } from './strength';
 
 export type ActivityType = 'flashcard' | 'choice' | 'type' | 'listen';
 export type PlayOutcome = 'correct' | 'wrong' | 'exposed';
@@ -25,6 +26,9 @@ export interface PlayItem {
 export interface PlaySettings {
   activities: ActivityType[];
   repsPerWord: 2 | 3;
+  wordCount: PlayCount;
+  source: PlaySource;
+  buckets: Strength[];
 }
 
 export interface PlayResult {
@@ -54,6 +58,9 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
 export const DEFAULT_PLAY_SETTINGS: PlaySettings = {
   activities: ['flashcard', 'choice', 'type', 'listen'],
   repsPerWord: 2,
+  wordCount: 20,
+  source: 'review',
+  buckets: [],
 };
 
 export function emptyPlayResult(startedAt: number): PlayResult {

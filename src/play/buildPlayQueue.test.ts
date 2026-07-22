@@ -13,7 +13,12 @@ function makeWord(id: number, overrides: Partial<Word> = {}): Word {
 
 const pool = Array.from({ length: 8 }, (_, i) => makeWord(i + 1));
 const settings = (o: Partial<PlaySettings> = {}): PlaySettings => ({
-  activities: ['flashcard', 'choice', 'type', 'listen'], repsPerWord: 2, ...o,
+  activities: ['flashcard', 'choice', 'type', 'listen'],
+  repsPerWord: 2,
+  wordCount: 20,
+  source: 'review',
+  buckets: [],
+  ...o,
 });
 
 describe('buildPlayQueue', () => {
