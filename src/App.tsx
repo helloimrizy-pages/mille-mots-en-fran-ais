@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { Play } from 'lucide-react';
 import { TopBar } from './components/TopBar';
 import { WordList } from './components/WordList';
@@ -62,7 +62,13 @@ export default function App() {
     });
   };
 
-  const selectedWords = (words ?? []).filter((w) => selectedIds.has(w.id));
+  // Memoized so PlayModal's setup preview — which App renders unconditionally —
+  // doesn't see a new array identity (and redo its bucket work) on every
+  // keystroke in the search box.
+  const selectedWords = useMemo(
+    () => (words ?? []).filter((w) => selectedIds.has(w.id)),
+    [words, selectedIds],
+  );
 
   return (
     <div className="min-h-screen max-w-2xl mx-auto">
