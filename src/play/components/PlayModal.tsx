@@ -1,22 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { Word } from '../../types';
 import { useFlashcardState } from '../../flashcards/useFlashcardState';
 import { buildPlayQueue } from '../buildPlayQueue';
 import { loadPlaySettings, savePlaySettings } from '../playStorage';
-import { emptyPlayResult, type PlayItem, type PlayOutcome, type PlayResult, type PlaySettings } from '../types';
+import { countDue, selectPlayWords } from '../selectWords';
+import { bucketCounts } from '../strength';
+import { emptyPlayResult, type PlayItem, type PlayOutcome, type PlayResult, type PlaySettings, type PlaySource } from '../types';
 import { FlashcardActivity } from './activities/FlashcardActivity';
 import { MultipleChoiceActivity } from './activities/MultipleChoiceActivity';
 import { TypeActivity } from './activities/TypeActivity';
 import { ListenActivity } from './activities/ListenActivity';
-import { PlaySetup } from './PlaySetup';
+import { PlaySetup, type SetupPreview } from './PlaySetup';
 import { PlaySummary } from './PlaySummary';
 
 interface Props {
+  /** The full word list — the pool for both source selection and distractors. */
+  words: Word[];
   selected: Word[];
-  pool: Word[];
   open: boolean;
   onClose: () => void;
+  /** When set, the source is fixed and its picker is hidden. */
+  forceSource?: PlaySource;
 }
 
 type PlayState =
@@ -33,10 +38,33 @@ function renderActivity(item: PlayItem, onResult: (o: PlayOutcome) => void) {
   }
 }
 
-export function PlayModal({ selected, pool, open, onClose }: Props) {
+export function PlayModal({ words, selected, open, onClose, forceSource }: Props) {
   const api = useFlashcardState();
   const [settings, setSettings] = useState<PlaySettings>(() => loadPlaySettings());
   const [state, setState] = useState<PlayState>({ kind: 'setup' });
+
+  const source = forceSource ?? settings.source;
+
+  // Recomputed on every settings change so the setup screen's counts and empty
+  // states always describe the session that Start would actually begin.
+  const preview = useMemo<SetupPreview>(() => {
+    const now = new Date();
+    const resolved = selectPlayWords({
+      source,
+      words,
+      cards: api.cards,
+      selected,
+      buckets: settings.buckets,
+      count: settings.wordCount,
+      now,
+    });
+    return {
+      words: resolved,
+      dueCount: countDue(resolved, api.cards, now),
+      counts: bucketCounts(words, api.cards, now),
+      selectedCount: selected.length,
+    };
+  }, [source, words, api.cards, selected, settings.buckets, settings.wordCount]);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -62,7 +90,7 @@ export function PlayModal({ selected, pool, open, onClose }: Props) {
 
   const start = () => {
     savePlaySettings(settings);
-    const queue = buildPlayQueue({ selected, pool, settings });
+    const queue = buildPlayQueue({ selected: preview.words, pool: words, settings });
     if (queue.length === 0) return;
     setState({ kind: 'session', queue, index: 0, streak: 0, result: emptyPlayResult(Date.now()) });
   };
@@ -138,10 +166,11 @@ export function PlayModal({ selected, pool, open, onClose }: Props) {
         <div className="overflow-y-auto flex-1">
           {state.kind === 'setup' && (
             <PlaySetup
-              wordCount={selected.length}
               settings={settings}
               onSettingsChange={setSettings}
               onStart={start}
+              preview={preview}
+              {...(forceSource ? { forceSource } : {})}
             />
           )}
 
