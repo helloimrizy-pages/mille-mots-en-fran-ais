@@ -48,7 +48,12 @@ function mergeCards(
  * Pure: no clock, no storage, no Firebase. Neither input is mutated.
  */
 export function mergeBlobs(local: SyncedBlob, remote: SyncedBlob | null): MergeResult {
-  if (!remote) return { blob: { ...local }, resetApplied: false };
+  if (!remote) {
+    return {
+      blob: { ...local, cards: { ...local.cards }, settings: { ...local.settings }, play: { ...local.play } },
+      resetApplied: false,
+    };
+  }
 
   const epoch = Math.max(local.epoch, remote.epoch);
   const resetApplied = remote.epoch > local.epoch;

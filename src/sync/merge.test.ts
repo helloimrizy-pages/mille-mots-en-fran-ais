@@ -28,6 +28,17 @@ describe('mergeBlobs — no remote', () => {
     expect(result.blob).toEqual(local);
     expect(result.resetApplied).toBe(false);
   });
+
+  it('does not share references with local when remote is null', () => {
+    const local = blob({ cards: { '1:fr-en': card() } });
+    const result = mergeBlobs(local, null);
+    expect(result.blob.cards).not.toBe(local.cards);
+    expect(result.blob.settings).not.toBe(local.settings);
+    expect(result.blob.play).not.toBe(local.play);
+    // and mutating the result must not reach the input
+    result.blob.cards['2:fr-en'] = card({ wordId: 2 });
+    expect(local.cards['2:fr-en']).toBeUndefined();
+  });
 });
 
 describe('mergeBlobs — cards', () => {
