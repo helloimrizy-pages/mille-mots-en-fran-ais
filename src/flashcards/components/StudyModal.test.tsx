@@ -7,9 +7,8 @@ import { createMockAdapter } from '../../sync/adapter';
 import type { Word } from '../../types';
 import { StudyModal } from './StudyModal';
 
-// StudyModal renders the Settings tab (AccountSection -> useSyncState) and
-// reads flashcard settings on every tab, so both providers are required or
-// mounting throws.
+// StudyModal's Settings view renders AccountSection -> useSyncState, and every
+// tab reads flashcard settings, so both providers are required or mounting throws.
 beforeEach(() => localStorage.clear());
 
 function makeWord(id: number): Word {
@@ -27,7 +26,7 @@ function makeWord(id: number): Word {
 
 const words = [makeWord(1), makeWord(2)];
 
-function tree(props: { open: boolean; initialTab?: 'study' | 'settings' }) {
+function tree(props: { open: boolean; settingsOnly?: boolean }) {
   return (
     <FlashcardProvider>
       <AuthProvider adapter={createMockAdapter()}>
@@ -38,53 +37,56 @@ function tree(props: { open: boolean; initialTab?: 'study' | 'settings' }) {
 }
 
 describe('StudyModal', () => {
-  it('opens on the Settings tab when initialTab is "settings"', () => {
-    render(tree({ open: true, initialTab: 'settings' }));
+  it('shows only the Settings panel in settings-only mode, with no tab bar', () => {
+    render(tree({ open: true, settingsOnly: true }));
+    // Settings content is present…
     expect(screen.getByRole('button', { name: /sign in with google/i })).toBeInTheDocument();
+    // …but the Study/Stats tab buttons and the study setup are gone.
+    expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Stats' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /start session/i })).not.toBeInTheDocument();
   });
 
-  it('opens on the Study tab when initialTab is "study"', () => {
-    render(tree({ open: true, initialTab: 'study' }));
-    expect(screen.getByRole('button', { name: /start session/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /sign in with google/i })).not.toBeInTheDocument();
+  it('labels the settings-only dialog "Settings"', () => {
+    render(tree({ open: true, settingsOnly: true }));
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument();
   });
 
-  it('opens on the Study tab when initialTab is omitted', () => {
+  it('opens the full tabbed modal on Study, with Study and Stats but no Settings tab', () => {
     render(tree({ open: true }));
+    expect(screen.getByRole('button', { name: 'Study' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stats' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start session/i })).toBeInTheDocument();
+    // The Settings tab was removed — settings live behind the profile button now.
+    expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /sign in with google/i })).not.toBeInTheDocument();
   });
 
-  it('re-seeds the tab across a close/reopen cycle', () => {
-    const { rerender } = render(tree({ open: true, initialTab: 'study' }));
+  it('resets the tabbed modal to Study on reopen', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(tree({ open: true }));
+    // Switch to Stats, then close and reopen.
+    await user.click(screen.getByRole('button', { name: 'Stats' }));
+    expect(screen.queryByRole('button', { name: /start session/i })).not.toBeInTheDocument();
+
+    rerender(tree({ open: false }));
+    rerender(tree({ open: true }));
+
+    // Reopening lands back on Study, not the previously-viewed Stats tab.
     expect(screen.getByRole('button', { name: /start session/i })).toBeInTheDocument();
-
-    // Close the modal.
-    rerender(tree({ open: false, initialTab: 'study' }));
-    expect(screen.queryByRole('button', { name: /start session/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /sign in with google/i })).not.toBeInTheDocument();
-
-    // Reopen on Settings this time: the re-seed must fire again, not just on
-    // first mount.
-    rerender(tree({ open: true, initialTab: 'settings' }));
-    expect(screen.getByRole('button', { name: /sign in with google/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /start session/i })).not.toBeInTheDocument();
   });
 
   it('does not trap a manual tab switch while the modal stays open', async () => {
     const user = userEvent.setup();
-    const { rerender } = render(tree({ open: true, initialTab: 'study' }));
+    const { rerender } = render(tree({ open: true }));
     expect(screen.getByRole('button', { name: /start session/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
-    expect(screen.getByRole('button', { name: /sign in with google/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Stats' }));
     expect(screen.queryByRole('button', { name: /start session/i })).not.toBeInTheDocument();
 
-    // A subsequent render while still open (no open-state transition) must
-    // not snap the tab back to `initialTab`.
-    rerender(tree({ open: true, initialTab: 'study' }));
-    expect(screen.getByRole('button', { name: /sign in with google/i })).toBeInTheDocument();
+    // A re-render while still open (no open-state transition) must not snap the
+    // tab back to Study.
+    rerender(tree({ open: true }));
     expect(screen.queryByRole('button', { name: /start session/i })).not.toBeInTheDocument();
   });
 });

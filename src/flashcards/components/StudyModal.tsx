@@ -15,10 +15,15 @@ interface Props {
   words: Word[];
   open: boolean;
   onClose: () => void;
-  initialTab?: 'study' | 'settings';
+  /**
+   * When true, show only the Settings panel with no Study/Stats tabs — the
+   * account/profile button opens this, since it is conceptually separate from
+   * studying. The due-badge path leaves it unset and gets the full tabbed modal.
+   */
+  settingsOnly?: boolean;
 }
 
-type Tab = 'study' | 'stats' | 'settings';
+type Tab = 'study' | 'stats';
 type StudyState =
   | { kind: 'setup' }
   | { kind: 'session'; queue: SessionCard[]; index: number; result: SessionResult }
@@ -33,9 +38,9 @@ function emptyResult(): SessionResult {
   };
 }
 
-export function StudyModal({ words, open, onClose, initialTab }: Props) {
+export function StudyModal({ words, open, onClose, settingsOnly }: Props) {
   const api = useFlashcardState();
-  const [tab, setTab] = useState<Tab>(initialTab ?? 'study');
+  const [tab, setTab] = useState<Tab>('study');
   const [filter, setFilter] = useState<PartOfSpeech[]>(api.settings.lastFilter);
   const [directions, setDirections] = useState<Direction[]>(api.settings.lastDirections);
   const [goal, setGoal] = useState<SessionGoal>(api.settings.lastGoal);
@@ -44,14 +49,14 @@ export function StudyModal({ words, open, onClose, initialTab }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
-  // Re-seed the tab from `initialTab` on every open (not just mount), without
-  // an extra effect: this is React's documented "adjust state while rendering"
-  // pattern for resetting state when a prop changes, keyed off `open` here so
-  // a still-open modal never fights the user's own tab clicks.
+  // Reset the tabbed modal to Study on every open (not just mount), without an
+  // extra effect: this is React's documented "adjust state while rendering"
+  // pattern, keyed off `open` so a still-open modal never fights the user's own
+  // tab clicks. Harmless in settings-only mode, which never renders the tabs.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) setTab(initialTab ?? 'study');
+    if (open) setTab('study');
   }
 
   useEffect(() => {
@@ -112,7 +117,7 @@ export function StudyModal({ words, open, onClose, initialTab }: Props) {
       className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-stretch justify-center"
       role="dialog"
       aria-modal="true"
-      aria-label="Flashcards"
+      aria-label={settingsOnly ? 'Settings' : 'Flashcards'}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -121,21 +126,25 @@ export function StudyModal({ words, open, onClose, initialTab }: Props) {
         className="w-full max-w-2xl bg-bg flex flex-col outline-none max-h-screen overflow-hidden"
       >
         <header className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-          <div className="flex items-center gap-1">
-            {(['study', 'stats', 'settings'] as Tab[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={cn(
-                  'text-sm px-3 py-1.5 rounded-pill transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40',
-                  tab === t ? 'bg-emphasis text-surface' : 'text-text-muted hover:bg-surface-muted',
-                )}
-              >
-                {t === 'study' ? 'Study' : t === 'stats' ? 'Stats' : 'Settings'}
-              </button>
-            ))}
-          </div>
+          {settingsOnly ? (
+            <div className="font-semibold px-1">Settings</div>
+          ) : (
+            <div className="flex items-center gap-1">
+              {(['study', 'stats'] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
+                  className={cn(
+                    'text-sm px-3 py-1.5 rounded-pill transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40',
+                    tab === t ? 'bg-emphasis text-surface' : 'text-text-muted hover:bg-surface-muted',
+                  )}
+                >
+                  {t === 'study' ? 'Study' : 'Stats'}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-3">
             {study.kind === 'session' && tab === 'study' && (
               <div className="text-xs text-text-muted tabular-nums" aria-label="Session progress">
@@ -154,7 +163,8 @@ export function StudyModal({ words, open, onClose, initialTab }: Props) {
         </header>
 
         <div className="overflow-y-auto flex-1">
-          {tab === 'study' && study.kind === 'setup' && (
+          {settingsOnly && <SettingsPanel />}
+          {!settingsOnly && tab === 'study' && study.kind === 'setup' && (
             <SessionSetup
               words={words}
               filter={filter}
@@ -167,7 +177,7 @@ export function StudyModal({ words, open, onClose, initialTab }: Props) {
             />
           )}
 
-          {tab === 'study' && study.kind === 'session' && current && (
+          {!settingsOnly && tab === 'study' && study.kind === 'session' && current && (
             <div className="p-4">
               <div className="h-1 bg-surface-muted rounded-full overflow-hidden mb-4">
                 <div
@@ -183,7 +193,7 @@ export function StudyModal({ words, open, onClose, initialTab }: Props) {
             </div>
           )}
 
-          {tab === 'study' && study.kind === 'summary' && (
+          {!settingsOnly && tab === 'study' && study.kind === 'summary' && (
             <SessionSummary
               result={study.result}
               onRestart={backToSetup}
@@ -191,8 +201,7 @@ export function StudyModal({ words, open, onClose, initialTab }: Props) {
             />
           )}
 
-          {tab === 'stats' && <StatsPanel words={words} />}
-          {tab === 'settings' && <SettingsPanel />}
+          {!settingsOnly && tab === 'stats' && <StatsPanel words={words} />}
         </div>
       </div>
     </div>
