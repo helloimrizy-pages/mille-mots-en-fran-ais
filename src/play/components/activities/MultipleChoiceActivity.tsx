@@ -62,7 +62,7 @@ export function MultipleChoiceActivity({ item, onResult }: ActivityProps) {
       {decided && (
         <button
           type="button"
-          onClick={() => onResult(picked === word.id ? 'correct' : 'wrong')}
+          onClick={() => onResult({ correct: picked === word.id })}
           className="w-full py-3 rounded-md bg-emphasis text-surface font-medium hover:bg-emphasis/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40"
         >
           Next →

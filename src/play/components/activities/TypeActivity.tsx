@@ -67,7 +67,7 @@ export function TypeActivity({ item, onResult }: ActivityProps) {
       ) : (
         <button
           type="button"
-          onClick={() => onResult(result)}
+          onClick={() => onResult({ correct: result === 'correct' })}
           className="w-full py-3 rounded-md bg-emphasis text-surface font-medium hover:bg-emphasis/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-emphasis/40"
         >
           Next →

@@ -13,7 +13,7 @@ describe('TypeActivity', () => {
     await userEvent.type(screen.getByLabelText(/type your answer/i), 'dog');
     await userEvent.click(screen.getByRole('button', { name: /check/i }));
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
-    expect(onResult).toHaveBeenCalledWith('correct');
+    expect(onResult).toHaveBeenCalledWith({ correct: true });
   });
 
   it('reports wrong for a non-matching answer', async () => {
@@ -22,7 +22,7 @@ describe('TypeActivity', () => {
     await userEvent.type(screen.getByLabelText(/type your answer/i), 'cat');
     await userEvent.click(screen.getByRole('button', { name: /check/i }));
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
-    expect(onResult).toHaveBeenCalledWith('wrong');
+    expect(onResult).toHaveBeenCalledWith({ correct: false });
   });
 
   it('accepts a single alternative from a multi-gloss english field', async () => {
@@ -32,6 +32,6 @@ describe('TypeActivity', () => {
     await userEvent.type(screen.getByLabelText(/type your answer/i), 'from');
     await userEvent.click(screen.getByRole('button', { name: /check/i }));
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
-    expect(onResult).toHaveBeenCalledWith('correct');
+    expect(onResult).toHaveBeenCalledWith({ correct: true });
   });
 });

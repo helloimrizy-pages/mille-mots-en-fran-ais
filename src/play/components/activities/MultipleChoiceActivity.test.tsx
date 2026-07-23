@@ -16,7 +16,7 @@ describe('MultipleChoiceActivity', () => {
     render(<MultipleChoiceActivity item={{ word: answer, activity: 'choice', direction: 'fr-en', choices: [answer, other] }} onResult={onResult} />);
     await userEvent.click(screen.getByRole('button', { name: 'dog' }));
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
-    expect(onResult).toHaveBeenCalledWith('correct');
+    expect(onResult).toHaveBeenCalledWith({ correct: true });
   });
 
   it('reports wrong when a distractor is chosen', async () => {
@@ -24,6 +24,6 @@ describe('MultipleChoiceActivity', () => {
     render(<MultipleChoiceActivity item={{ word: answer, activity: 'choice', direction: 'fr-en', choices: [answer, other] }} onResult={onResult} />);
     await userEvent.click(screen.getByRole('button', { name: 'cat' }));
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
-    expect(onResult).toHaveBeenCalledWith('wrong');
+    expect(onResult).toHaveBeenCalledWith({ correct: false });
   });
 });

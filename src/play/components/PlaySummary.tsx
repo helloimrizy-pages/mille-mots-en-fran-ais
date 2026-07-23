@@ -7,8 +7,8 @@ interface Props {
 }
 
 export function PlaySummary({ result, onReplay, onClose }: Props) {
-  const graded = result.total;
-  const pct = graded === 0 ? 0 : Math.round((result.correct / graded) * 100);
+  const answered = result.total;
+  const pct = answered === 0 ? 0 : Math.round((result.correct / answered) * 100);
   const seconds = Math.max(0, Math.round((result.endedAt - result.startedAt) / 1000));
 
   return (
@@ -16,7 +16,7 @@ export function PlaySummary({ result, onReplay, onClose }: Props) {
       <div>
         <h2 className="text-xl font-semibold">Session complete</h2>
         <p className="text-text-muted text-sm mt-1">
-          {graded} graded answer{graded === 1 ? '' : 's'} in {Math.floor(seconds / 60)}m {seconds % 60}s
+          {answered} answer{answered === 1 ? '' : 's'} in {Math.floor(seconds / 60)}m {seconds % 60}s
         </p>
       </div>
 
@@ -37,7 +37,7 @@ export function PlaySummary({ result, onReplay, onClose }: Props) {
 
       <div className="text-sm text-text-muted">
         <strong className="text-text">{pct}%</strong> correct
-        {result.exposed > 0 && <span> · {result.exposed} flashcard{result.exposed === 1 ? '' : 's'} reviewed</span>}
+        {result.practiced > 0 && <span> · {result.practiced} practised · schedule unchanged</span>}
       </div>
 
       <div className="flex gap-2">

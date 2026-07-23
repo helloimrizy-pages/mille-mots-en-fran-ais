@@ -58,9 +58,16 @@ describe('buildPlayQueue', () => {
     }
   });
 
-  it('always uses fr-en direction for listen and flashcard', () => {
-    const queue = buildPlayQueue({ selected: pool, pool, settings: settings({ activities: ['flashcard', 'listen'] }), rng: () => 0.9 });
+  it('always uses fr-en direction for listen', () => {
+    const queue = buildPlayQueue({ selected: pool, pool, settings: settings({ activities: ['listen'] }), rng: () => 0.9 });
     expect(queue.every((it) => it.direction === 'fr-en')).toBe(true);
+  });
+
+  it('lets flashcard run en-fr (random direction like choice and type)', () => {
+    // rng 0.9 → the < 0.5 fr-en branch is false → en-fr for an unrestricted word.
+    const queue = buildPlayQueue({ selected: pool, pool, settings: settings({ activities: ['flashcard'] }), rng: () => 0.9 });
+    expect(queue.every((it) => it.activity === 'flashcard')).toBe(true);
+    expect(queue.every((it) => it.direction === 'en-fr')).toBe(true);
   });
 
   it('is deterministic for a fixed rng', () => {
@@ -90,26 +97,32 @@ describe('buildPlayQueue', () => {
       expect(queue.every((it) => it.direction === 'fr-en')).toBe(true);
     });
 
-    it('excludes flashcard and listen, and only yields en-fr, for a word studied only in en-fr', () => {
+    it('excludes only listen, and yields en-fr (flashcard allowed), for a word studied only in en-fr', () => {
       const cards = Object.fromEntries([studiedCard(1, 'en-fr')]);
       const queue = buildPlayQueue({
         selected: [makeWord(1)], pool, cards,
         settings: settings({ activities: ['flashcard', 'choice', 'type', 'listen'], repsPerWord: 3 }),
         rng: () => 0.9,
       });
-      expect(queue.every((it) => it.activity !== 'flashcard' && it.activity !== 'listen')).toBe(true);
+      // Listen can't run en-fr (its audio is French), so it's dropped; flashcard
+      // now can, so it stays.
+      expect(queue.every((it) => it.activity !== 'listen')).toBe(true);
+      expect(queue.some((it) => it.activity === 'flashcard')).toBe(true);
       expect(queue.every((it) => it.direction === 'en-fr')).toBe(true);
     });
 
     it('falls back to the full enabled list rather than producing no items when restriction would empty it', () => {
+      // listen-only + a word studied only en-fr: the restriction would empty the
+      // list, so it falls back to listen (in its fr-en direction) rather than
+      // emitting nothing for the word.
       const cards = Object.fromEntries([studiedCard(1, 'en-fr')]);
       const queue = buildPlayQueue({
         selected: [makeWord(1)], pool, cards,
-        settings: settings({ activities: ['flashcard'], repsPerWord: 2 }),
+        settings: settings({ activities: ['listen'], repsPerWord: 2 }),
         rng: () => 0.9,
       });
       expect(queue.length).toBe(2);
-      expect(queue.every((it) => it.activity === 'flashcard')).toBe(true);
+      expect(queue.every((it) => it.activity === 'listen')).toBe(true);
     });
   });
 });

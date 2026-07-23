@@ -6,7 +6,9 @@ import { buildPlayQueue } from '../buildPlayQueue';
 import { loadPlaySettings, savePlaySettings } from '../playStorage';
 import { countDue, selectPlayWords } from '../selectWords';
 import { bucketCounts, type Strength } from '../strength';
-import { emptyPlayResult, type PlayItem, type PlayOutcome, type PlayResult, type PlaySettings, type PlaySource } from '../types';
+import { emptyPlayResult, type PlayAnswer, type PlayItem, type PlayResult, type PlaySettings, type PlaySource } from '../types';
+import type { Grade } from '../../flashcards/types';
+import { gradeForActivity, shouldSchedule } from '../grading';
 import { FlashcardActivity } from './activities/FlashcardActivity';
 import { MultipleChoiceActivity } from './activities/MultipleChoiceActivity';
 import { TypeActivity } from './activities/TypeActivity';
@@ -34,7 +36,7 @@ const EMPTY_BUCKET_COUNTS: Record<Strength, number> = {
   'shaky': 0, 'getting-solid': 0, 'solid': 0,
 };
 
-function renderActivity(item: PlayItem, onResult: (o: PlayOutcome) => void) {
+function renderActivity(item: PlayItem, onResult: (answer: PlayAnswer) => void) {
   switch (item.activity) {
     case 'flashcard': return <FlashcardActivity item={item} onResult={onResult} />;
     case 'choice': return <MultipleChoiceActivity item={item} onResult={onResult} />;
@@ -112,22 +114,41 @@ export function PlayModal({ words, selected, open, onClose, forceSource }: Props
     setState({ kind: 'session', queue, index: 0, streak: 0, result: emptyPlayResult(Date.now()) });
   };
 
-  const handleResult = (outcome: PlayOutcome) => {
+  const handleResult = (answer: PlayAnswer) => {
     if (state.kind !== 'session') return;
     const item = state.queue[state.index];
     if (!item) return;
 
-    if (outcome !== 'exposed') {
-      api.grade(item.word.id, item.direction, outcome === 'correct' ? 3 : 1, new Date());
+    const now = new Date();
+    // Read the card as it stands *before* this answer, both to decide the grade
+    // and to decide whether to write it at all. Early practice on a not-yet-due
+    // card is shown but never reschedules it.
+    const card = api.getCard(item.word.id, item.direction);
+    const scheduleThis = shouldSchedule(card, now);
+
+    let grade: Grade;
+    let correct: boolean;
+    if ('grade' in answer) {
+      grade = answer.grade;
+      // For the streak/summary, "knew it" means anything but Again — a Hard
+      // recall still counts, matching how a correct-but-Hard choice answer does.
+      correct = grade > 1;
+    } else {
+      correct = answer.correct;
+      grade = gradeForActivity(item.activity, correct, card, now);
     }
 
-    const streak = outcome === 'correct' ? state.streak + 1 : 0;
+    if (scheduleThis) {
+      api.grade(item.word.id, item.direction, grade, now);
+    }
+
+    const streak = correct ? state.streak + 1 : 0;
     const result: PlayResult = {
       ...state.result,
-      correct: state.result.correct + (outcome === 'correct' ? 1 : 0),
-      wrong: state.result.wrong + (outcome === 'wrong' ? 1 : 0),
-      exposed: state.result.exposed + (outcome === 'exposed' ? 1 : 0),
-      total: state.result.total + (outcome === 'exposed' ? 0 : 1),
+      correct: state.result.correct + (correct ? 1 : 0),
+      wrong: state.result.wrong + (correct ? 0 : 1),
+      practiced: state.result.practiced + (scheduleThis ? 0 : 1),
+      total: state.result.total + 1,
       streakMax: Math.max(state.result.streakMax, streak),
     };
 

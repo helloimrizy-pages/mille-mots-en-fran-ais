@@ -50,21 +50,23 @@ function studiedDirections(word: Word, cards: Record<string, CardState> | undefi
 }
 
 function directionFor(activity: ActivityType, rng: () => number, studied: Direction[] | null): Direction {
-  if (activity === 'flashcard' || activity === 'listen') return 'fr-en';
+  // Listen's prompt is the French audio, so it can only run fr-en. Flashcard,
+  // choice and type all render either direction, so they respect the studied
+  // restriction (or pick randomly when the word is new / unrestricted).
+  if (activity === 'listen') return 'fr-en';
   if (studied) return studied[Math.floor(rng() * studied.length)] as Direction;
   return rng() < 0.5 ? 'fr-en' : 'en-fr';
 }
 
 /**
- * flashcard/listen are hardcoded fr-en (see directionFor), so a word studied
- * only en-fr can't sensibly use them. Drop those two activities for that word
- * only — unless doing so would leave nothing enabled at all, in which case
- * fall back to the full enabled list rather than emitting no items for the
- * word.
+ * Only listen is fr-en-only (see directionFor), so a word studied only en-fr
+ * can't sensibly use it. Drop listen for that word — unless doing so would
+ * leave nothing enabled at all, in which case fall back to the full enabled
+ * list rather than emitting no items for the word.
  */
 function activitiesFor(enabled: ActivityType[], studied: Direction[] | null): ActivityType[] {
   if (!studied || studied.includes('fr-en')) return enabled;
-  const filtered = enabled.filter((a) => a !== 'flashcard' && a !== 'listen');
+  const filtered = enabled.filter((a) => a !== 'listen');
   return filtered.length > 0 ? filtered : enabled;
 }
 
