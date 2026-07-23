@@ -17,6 +17,8 @@ export interface FlashcardApi {
   cards: Record<string, CardState>;
   log: ReviewLogEntry[];
   settings: StudySettings;
+  getBlob: () => StoredBlob;
+  replaceBlob: (blob: StoredBlob) => void;
   dueCount: (now?: Date) => number;
   getCard: (wordId: number, direction: Direction) => CardState;
   grade: (wordId: number, direction: Direction, grade: Grade, now?: Date) => void;
@@ -27,6 +29,19 @@ export interface FlashcardApi {
 }
 
 export const FlashcardContext = createContext<FlashcardApi | null>(null);
+
+const resetListeners = new Set<() => void>();
+
+/**
+ * Lets the sync layer learn that this device authoritatively cleared its cards.
+ * Without it, a reset would be silently undone by the next sync, because the
+ * merge never deletes.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- module-level subscription, not a component
+export function subscribeReset(cb: () => void): () => void {
+  resetListeners.add(cb);
+  return () => { resetListeners.delete(cb); };
+}
 
 export function FlashcardProvider({ children }: { children: ReactNode }) {
   const [blob, setBlob] = useState<StoredBlob>(() => load());
@@ -87,6 +102,13 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
       log: [],
       settings: prev.settings,
     }));
+    for (const cb of resetListeners) cb();
+  }, []);
+
+  const getBlob = useCallback(() => blob, [blob]);
+
+  const replaceBlob = useCallback((next: StoredBlob) => {
+    setBlob(next);
   }, []);
 
   const exportJson = useCallback(() => storageExport(blob), [blob]);
@@ -94,9 +116,9 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
   const importJson = useCallback((str: string): boolean => {
     const imported = storageImport(str);
     if (!imported) return false;
-    setBlob(imported);
+    replaceBlob(imported);
     return true;
-  }, []);
+  }, [replaceBlob]);
 
   const dueCount = useCallback(
     (now: Date = new Date()): number => {
@@ -119,9 +141,11 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
     grade,
     updateSettings,
     resetAll,
+    getBlob,
+    replaceBlob,
     exportJson,
     importJson,
-  }), [blob, dueCount, getCard, grade, updateSettings, resetAll, exportJson, importJson]);
+  }), [blob, dueCount, getCard, grade, updateSettings, resetAll, getBlob, replaceBlob, exportJson, importJson]);
 
   return <FlashcardContext.Provider value={api}>{children}</FlashcardContext.Provider>;
 }
