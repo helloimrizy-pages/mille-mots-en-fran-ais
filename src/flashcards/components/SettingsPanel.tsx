@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useFlashcardState } from '../useFlashcardState';
+import { AccountSection } from '../../sync/components/AccountSection';
 
 export function SettingsPanel() {
   const { settings, updateSettings, exportJson, importJson } = useFlashcardState();
@@ -26,6 +27,8 @@ export function SettingsPanel() {
 
   return (
     <div className="flex flex-col gap-6 p-4">
+      <AccountSection />
+
       <section>
         <label className="flex items-center justify-between cursor-pointer">
           <span className="text-sm font-medium">Type to check answer</span>

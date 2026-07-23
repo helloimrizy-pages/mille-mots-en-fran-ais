@@ -4,6 +4,7 @@ import { SortMenu } from './SortMenu';
 import { DarkModeToggle } from './DarkModeToggle';
 import { HideTranslationToggle } from './HideTranslationToggle';
 import { DueBadge } from '../flashcards/components/DueBadge';
+import { SyncStatusDot } from '../sync/components/SyncStatusDot';
 import type { PosFilter, SortMode } from '../hooks/useFilteredWords';
 import { cn } from '@/lib/utils';
 
@@ -16,11 +17,12 @@ interface Props {
   onSortChange: (v: SortMode) => void;
   resultCount: number;
   onOpenStudy: () => void;
+  onOpenAccount: () => void;
   selectMode: boolean;
   onToggleSelectMode: () => void;
 }
 
-export function TopBar({ search, pos, sort, onSearchChange, onPosChange, onSortChange, resultCount, onOpenStudy, selectMode, onToggleSelectMode }: Props) {
+export function TopBar({ search, pos, sort, onSearchChange, onPosChange, onSortChange, resultCount, onOpenStudy, onOpenAccount, selectMode, onToggleSelectMode }: Props) {
   return (
     <div className="sticky top-0 z-10 bg-bg/90 backdrop-blur-md px-4 py-4 border-b border-border">
       <div className="flex items-center justify-between mb-2.5">
@@ -42,6 +44,7 @@ export function TopBar({ search, pos, sort, onSearchChange, onPosChange, onSortC
           >
             {selectMode ? 'Done' : 'Select'}
           </button>
+          <SyncStatusDot onClick={onOpenAccount} />
           <DueBadge onClick={onOpenStudy} />
           <SortMenu value={sort} onChange={onSortChange} />
           <DarkModeToggle />
