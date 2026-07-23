@@ -33,6 +33,16 @@ function clamp(s: Partial<PlaySettings>): PlaySettings {
   };
 }
 
+type PlaySettingsListener = (settings: PlaySettings) => void;
+
+const listeners = new Set<PlaySettingsListener>();
+
+/** Lets the sync layer learn about play-settings changes without polling. */
+export function subscribePlaySettings(cb: PlaySettingsListener): () => void {
+  listeners.add(cb);
+  return () => { listeners.delete(cb); };
+}
+
 export function loadPlaySettings(): PlaySettings {
   let raw: string | null = null;
   try { raw = localStorage.getItem(PLAY_STORAGE_KEY); } catch { return { ...DEFAULT_PLAY_SETTINGS }; }
@@ -48,4 +58,7 @@ export function loadPlaySettings(): PlaySettings {
 
 export function savePlaySettings(s: PlaySettings): void {
   try { localStorage.setItem(PLAY_STORAGE_KEY, JSON.stringify(s)); } catch { /* quota or disabled */ }
+  // Notify even if the write failed — the in-memory value the caller is using
+  // changed regardless, and the sync layer should push it.
+  for (const cb of listeners) cb(s);
 }

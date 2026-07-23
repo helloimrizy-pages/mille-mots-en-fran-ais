@@ -11,6 +11,34 @@ Currently, two official plugins are available:
 
 The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
+## Cloud sync (optional)
+
+Sync is off unless Firebase is configured. Without it the app runs entirely on
+`localStorage`, exactly as before.
+
+1. Create a Firebase project, add a **Web** app, and enable **Google** under
+   Authentication → Sign-in method.
+2. Create a **Firestore** database.
+3. Copy the web config values into `.env`:
+
+   ```
+   VITE_FIREBASE_API_KEY=...
+   VITE_FIREBASE_AUTH_DOMAIN=...
+   VITE_FIREBASE_PROJECT_ID=...
+   VITE_FIREBASE_APP_ID=...
+   ```
+
+4. Deploy the security rules — **the database is not secured until you do**:
+
+   ```
+   firebase deploy --only firestore:rules
+   ```
+
+`localhost` is an authorized domain by default, so sign-in works in development
+with no further setup. Syncing between devices additionally requires deploying
+the app and adding its domain under Authentication → Settings → Authorized
+domains.
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_PLAY_SETTINGS, type PlaySettings } from './types';
-import { PLAY_STORAGE_KEY, loadPlaySettings, savePlaySettings } from './playStorage';
+import { PLAY_STORAGE_KEY, loadPlaySettings, savePlaySettings, subscribePlaySettings } from './playStorage';
 
 afterEach(() => localStorage.clear());
 
@@ -54,5 +54,28 @@ describe('playStorage', () => {
   it('drops unknown buckets and the new bucket', () => {
     localStorage.setItem(PLAY_STORAGE_KEY, JSON.stringify({ buckets: ['shaky', 'bogus', 'new'] }));
     expect(loadPlaySettings().buckets).toEqual(['shaky']);
+  });
+
+  it('notifies subscribers when settings are saved', () => {
+    const seen: number[] = [];
+    const unsubscribe = subscribePlaySettings((s) => seen.push(s.repsPerWord));
+    savePlaySettings({ ...DEFAULT_PLAY_SETTINGS, repsPerWord: 3 });
+    savePlaySettings({ ...DEFAULT_PLAY_SETTINGS, repsPerWord: 2 });
+    unsubscribe();
+    savePlaySettings({ ...DEFAULT_PLAY_SETTINGS, repsPerWord: 3 });
+    expect(seen).toEqual([3, 2]);
+  });
+
+  it('supports multiple independent subscribers', () => {
+    let a = 0;
+    let b = 0;
+    const un1 = subscribePlaySettings(() => { a++; });
+    const un2 = subscribePlaySettings(() => { b++; });
+    savePlaySettings({ ...DEFAULT_PLAY_SETTINGS });
+    un1();
+    savePlaySettings({ ...DEFAULT_PLAY_SETTINGS });
+    un2();
+    expect(a).toBe(1);
+    expect(b).toBe(2);
   });
 });

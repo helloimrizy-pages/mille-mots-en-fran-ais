@@ -33,6 +33,7 @@ export default function App() {
   const [filters, dispatch] = useReducer(filterReducer, { search: '', pos: 'all', sort: 'rank' });
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [studyOpen, setStudyOpen] = useState(false);
+  const [studyTab, setStudyTab] = useState<'study' | 'settings'>('study');
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [play, setPlay] = useState<{ open: boolean; force?: PlaySource }>({ open: false });
@@ -80,7 +81,8 @@ export default function App() {
         onPosChange={(v) => dispatch({ type: 'pos', value: v })}
         onSortChange={(v) => dispatch({ type: 'sort', value: v })}
         resultCount={filtered.length}
-        onOpenStudy={() => setStudyOpen(true)}
+        onOpenStudy={() => { setStudyTab('study'); setStudyOpen(true); }}
+        onOpenAccount={() => { setStudyTab('settings'); setStudyOpen(true); }}
         selectMode={selectMode}
         onToggleSelectMode={() => {
           setSelectMode((m) => !m);
@@ -139,6 +141,7 @@ export default function App() {
         words={words ?? []}
         open={studyOpen}
         onClose={() => setStudyOpen(false)}
+        initialTab={studyTab}
       />
     </div>
   );

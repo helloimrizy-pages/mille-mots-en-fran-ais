@@ -29,6 +29,8 @@ function makeApi(
     cards,
     log: [],
     settings: { ...DEFAULT_SETTINGS, ...settings },
+    getBlob: () => ({ version: 2, cards, log: [], settings: { ...DEFAULT_SETTINGS, ...settings } }),
+    replaceBlob: () => {},
     dueCount: () => 0,
     getCard: () => ({} as CardState),
     grade: () => {},

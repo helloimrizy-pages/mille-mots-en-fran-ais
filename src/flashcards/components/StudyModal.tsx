@@ -15,6 +15,7 @@ interface Props {
   words: Word[];
   open: boolean;
   onClose: () => void;
+  initialTab?: 'study' | 'settings';
 }
 
 type Tab = 'study' | 'stats' | 'settings';
@@ -32,9 +33,9 @@ function emptyResult(): SessionResult {
   };
 }
 
-export function StudyModal({ words, open, onClose }: Props) {
+export function StudyModal({ words, open, onClose, initialTab }: Props) {
   const api = useFlashcardState();
-  const [tab, setTab] = useState<Tab>('study');
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'study');
   const [filter, setFilter] = useState<PartOfSpeech[]>(api.settings.lastFilter);
   const [directions, setDirections] = useState<Direction[]>(api.settings.lastDirections);
   const [goal, setGoal] = useState<SessionGoal>(api.settings.lastGoal);
@@ -42,6 +43,16 @@ export function StudyModal({ words, open, onClose }: Props) {
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+
+  // Re-seed the tab from `initialTab` on every open (not just mount), without
+  // an extra effect: this is React's documented "adjust state while rendering"
+  // pattern for resetting state when a prop changes, keyed off `open` here so
+  // a still-open modal never fights the user's own tab clicks.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setTab(initialTab ?? 'study');
+  }
 
   useEffect(() => {
     if (open) {
