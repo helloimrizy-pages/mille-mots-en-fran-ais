@@ -128,6 +128,12 @@ export function AuthProvider({ children, adapter: injected }: Props) {
         if (mode === 'full') applyLocal(next);
         await adapter.saveRemote(uid, next);
 
+        // A sign-out (or switch to a different account) may have landed while
+        // the push above was in flight; a stale task must not clobber the
+        // status the user now sees or persist sync-meta for a session that
+        // has ended.
+        if (activeUidRef.current !== uid) return;
+
         const now = Date.now();
         saveSyncMeta({
           version: 1,

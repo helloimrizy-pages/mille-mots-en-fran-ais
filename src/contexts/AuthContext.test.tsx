@@ -192,6 +192,60 @@ describe('AuthProvider', () => {
     expect(result.current.sync.status).toBe('signed-out');
   });
 
+  it('a sign-out during the remote write does not overwrite signed-out status', async () => {
+    const base = createMockAdapter();
+    // Non-nullable placeholders (rather than `T | null`) so reading them
+    // outside the Promise executor that reassigns them doesn't get narrowed
+    // away by control-flow analysis across the closure boundary.
+    let releaseSave: () => void = () => {};
+    let saveEntered: () => void = () => {};
+    // Sign-in's own full sync (and the follow-up push it can trigger via
+    // applyLocal) also goes through this adapter, so gate is keyed off the
+    // save that actually carries the freshly graded card, not call order.
+    let gated = false;
+    const entered = new Promise<void>((res) => { saveEntered = res; });
+    const gate = new Promise<void>((res) => { releaseSave = res; });
+    const slow: MockAdapter = {
+      ...base,
+      get remote() { return base.remote; },
+      set remote(v) { base.remote = v; },
+      get saveCount() { return base.saveCount; },
+      get loadCount() { return base.loadCount; },
+      emitUser: base.emitUser,
+      onAuthChange: base.onAuthChange,
+      loadRemote: base.loadRemote,
+      signIn: base.signIn,
+      signOut: base.signOut,
+      failNext: base.failNext,
+      saveRemote: async (uid, blob) => {
+        if (!gated && blob.cards['9:fr-en']) {
+          gated = true;
+          saveEntered();
+          await gate;
+        }
+        return base.saveRemote(uid, blob);
+      },
+    };
+    adapter = slow;
+
+    const { result } = renderBoth();
+    await act(async () => { adapter.emitUser(USER); });
+    await waitFor(() => expect(result.current.sync.status).toBe('synced'));
+
+    // Schedule a debounced push carrying the freshly graded card and let it
+    // reach the in-flight remote write.
+    act(() => { result.current.cards.grade(9, 'fr-en', 3); });
+    await act(async () => { await entered; });
+
+    // Sign out while saveRemote is still awaiting its gate.
+    await act(async () => { adapter.emitUser(null); });
+
+    releaseSave();
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+
+    expect(result.current.sync.status).toBe('signed-out');
+  });
+
   it('renders children', () => {
     const { getByText } = render(
       <FlashcardProvider>
