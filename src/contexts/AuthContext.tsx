@@ -120,6 +120,15 @@ export function AuthProvider({ children, adapter: injected }: Props) {
         // status the user now sees or push for a session that has ended.
         if (activeUidRef.current !== uid) return;
 
+        // Record that this device's local store now belongs to `uid`, before we
+        // mutate it and independently of whether the upcoming saveRemote succeeds.
+        // If lastUid were only written on success, a failed first sync would leave it
+        // null, and a later different-account sign-in would merge this account's cards
+        // up into the other account instead of replacing. The switchingAccounts
+        // decision above already read the *previous* lastUid, so writing it here does
+        // not disturb that decision.
+        saveSyncMeta({ ...loadSyncMeta(), lastUid: uid });
+
         // Only a full sync pulls and merges a remote; a push's `next` is
         // exactly the local state already in the store (assembleLocal reads
         // straight from getBlob()), so writing it back here would produce a
@@ -215,9 +224,13 @@ export function AuthProvider({ children, adapter: injected }: Props) {
   // the blob effect above so it reads the post-reset ref, not this instant's.
   useEffect(() => {
     return subscribeReset(() => {
+      // A signed-out reset must not advance the epoch: it would out-rank an
+      // account this device has never synced with and wipe its cloud deck on the
+      // next sign-in. resetAll still clears local cards regardless.
+      if (!activeUidRef.current) return;
       const meta = loadSyncMeta();
       saveSyncMeta({ ...meta, epoch: meta.epoch + 1 });
-      if (userRef.current) pendingResetPush.current = true;
+      pendingResetPush.current = true;
     });
   }, []);
 

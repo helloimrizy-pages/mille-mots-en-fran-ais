@@ -246,6 +246,74 @@ describe('AuthProvider', () => {
     expect(result.current.sync.status).toBe('signed-out');
   });
 
+  it('records lastUid even when the first sync fails, so a later account does not inherit cards', async () => {
+    // The failure must land on saveRemote (after loadRemote+merge+applyLocal
+    // already ran), matching the real trace: a plain failNext() would instead
+    // fail the loadRemote call that runs first, before the local store is
+    // ever touched. A custom adapter lets the pull succeed and only the very
+    // first save throw, exactly like C1's transient-network trace.
+    const base = createMockAdapter();
+    base.remote = { ...emptySyncedBlob(), cards: { '2:fr-en': card({ wordId: 2 }) } };
+    let saveFailed = false;
+    const flaky: MockAdapter = {
+      ...base,
+      get remote() { return base.remote; },
+      set remote(v) { base.remote = v; },
+      get saveCount() { return base.saveCount; },
+      get loadCount() { return base.loadCount; },
+      emitUser: base.emitUser,
+      onAuthChange: base.onAuthChange,
+      loadRemote: base.loadRemote,
+      signIn: base.signIn,
+      signOut: base.signOut,
+      failNext: base.failNext,
+      saveRemote: async (uid, blob) => {
+        if (!saveFailed) {
+          saveFailed = true;
+          throw new Error('offline');
+        }
+        return base.saveRemote(uid, blob);
+      },
+    };
+    adapter = flaky;
+
+    const { result } = renderBoth();
+    act(() => { result.current.cards.grade(1, 'fr-en', 3); });
+    await act(async () => { adapter.emitUser(USER); });
+    await waitFor(() => expect(result.current.sync.status).toBe('error'));
+
+    // Despite the failure, ownership is recorded.
+    expect(JSON.parse(localStorage.getItem(SYNC_META_KEY)!).lastUid).toBe(USER.uid);
+
+    // Now a different account signs in on the same browser.
+    const bRemote = { ...emptySyncedBlob(), cards: { '9:fr-en': card({ wordId: 9 }) } };
+    adapter.remote = bRemote;
+    await act(async () => { adapter.emitUser(OTHER); });
+    await waitFor(() => expect(result.current.sync.status).toBe('synced'));
+
+    // B must NOT have inherited A's card 1, locally or in the remote it wrote.
+    expect(result.current.cards.cards['1:fr-en']).toBeUndefined();
+    expect(adapter.remote!.cards['1:fr-en']).toBeUndefined();
+    expect(adapter.remote!.cards['9:fr-en']).toBeDefined();
+  });
+
+  it('a reset while signed out does not discard the cloud deck on next sign-in', async () => {
+    const { result } = renderBoth();
+    // Reset while signed out — must not advance the epoch.
+    await act(async () => { result.current.cards.resetAll(); });
+    const metaRaw = localStorage.getItem(SYNC_META_KEY);
+    expect(metaRaw === null || JSON.parse(metaRaw).epoch === 0).toBe(true);
+
+    // Sign into an account that has cards at epoch 0.
+    adapter.remote = { ...emptySyncedBlob(), epoch: 0, cards: { '7:fr-en': card({ wordId: 7 }) } };
+    await act(async () => { adapter.emitUser(USER); });
+    await waitFor(() => expect(result.current.sync.status).toBe('synced'));
+
+    // The cloud deck survived — it was not out-ranked by the signed-out reset.
+    expect(result.current.cards.cards['7:fr-en']).toBeDefined();
+    expect(adapter.remote!.cards['7:fr-en']).toBeDefined();
+  });
+
   it('renders children', () => {
     const { getByText } = render(
       <FlashcardProvider>
