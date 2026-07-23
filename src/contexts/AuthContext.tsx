@@ -54,6 +54,16 @@ export function AuthProvider({ children, adapter: injected }: Props) {
   // pull-merge and write a blob assembled from pre-merge state.
   const chain = useRef<Promise<void>>(Promise.resolve());
 
+  // The session identity a queued/in-flight `runSync` task must check itself
+  // against. Deliberately NOT `userRef`: userRef is synced from an effect, so
+  // it only catches up after React commits and flushes effects for the render
+  // that called setUser — a whole cycle behind the point where a task chained
+  // straight off `onAuthChange` (via `chain.current.then(task, task)`) starts
+  // running as a microtask. This ref is written synchronously, in the same
+  // callback that decides the session changed, so a task can never observe a
+  // stale value for the very sign-in that scheduled it.
+  const activeUidRef = useRef<string | null>(null);
+
   const assembleLocal = useCallback((): SyncedBlob => {
     const meta = loadSyncMeta();
     const blob = apiRef.current.getBlob();
@@ -81,6 +91,11 @@ export function AuthProvider({ children, adapter: injected }: Props) {
 
   const runSync = useCallback((uid: string, mode: 'full' | 'push') => {
     const task = async () => {
+      // The session that scheduled this task may already be over by the time
+      // it actually runs (queued behind other work in `chain`, or a sign-out
+      // landed before this task even started). A stale task must never touch
+      // status or storage for a session that has ended.
+      if (activeUidRef.current !== uid) return;
       setStatus('syncing');
       setError(null);
       try {
@@ -100,7 +115,17 @@ export function AuthProvider({ children, adapter: injected }: Props) {
             : mergeBlobs(local, remote).blob;
         }
 
-        applyLocal(next);
+        // A sign-out (or switch to a different account) may have landed while
+        // the pull above was in flight; a stale task must not clobber the
+        // status the user now sees or push for a session that has ended.
+        if (activeUidRef.current !== uid) return;
+
+        // Only a full sync pulls and merges a remote; a push's `next` is
+        // exactly the local state already in the store (assembleLocal reads
+        // straight from getBlob()), so writing it back here would produce a
+        // fresh blob reference and re-fire the debounce effect that schedules
+        // this very push — forever.
+        if (mode === 'full') applyLocal(next);
         await adapter.saveRemote(uid, next);
 
         const now = Date.now();
@@ -115,6 +140,7 @@ export function AuthProvider({ children, adapter: injected }: Props) {
         setLastSyncedAt(now);
         setStatus('synced');
       } catch (e) {
+        if (activeUidRef.current !== uid) return;
         // Never fatal: local storage keeps working exactly as it does signed out.
         setError(e instanceof Error ? e.message : String(e));
         setStatus(navigator.onLine === false ? 'offline' : 'error');
@@ -127,6 +153,7 @@ export function AuthProvider({ children, adapter: injected }: Props) {
 
   useEffect(() => {
     return adapter.onAuthChange((next) => {
+      activeUidRef.current = next?.uid ?? null;
       setUser(next);
       if (next) {
         void runSync(next.uid, 'full');

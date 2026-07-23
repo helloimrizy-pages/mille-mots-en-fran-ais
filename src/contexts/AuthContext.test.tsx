@@ -165,6 +165,33 @@ describe('AuthProvider', () => {
     });
   });
 
+  it('settles after signing in — the debounced push does not loop', async () => {
+    const { result } = renderBoth();
+    act(() => { result.current.cards.grade(1, 'fr-en', 3); });
+    await act(async () => { adapter.emitUser(USER); });
+    await waitFor(() => expect(result.current.sync.status).toBe('synced'));
+
+    // Let any debounced push fire and settle.
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    const settled = adapter.saveCount;
+    // No further syncs should occur without a real change.
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    expect(adapter.saveCount).toBe(settled);
+  });
+
+  it('a sync in flight at sign-out does not overwrite signed-out status', async () => {
+    const { result } = renderBoth();
+    await act(async () => { adapter.emitUser(USER); });
+    await waitFor(() => expect(result.current.sync.status).toBe('synced'));
+
+    // Schedule a debounced push, then sign out before it can run.
+    act(() => { result.current.cards.grade(9, 'fr-en', 3); });
+    await act(async () => { adapter.emitUser(null); });
+
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    expect(result.current.sync.status).toBe('signed-out');
+  });
+
   it('renders children', () => {
     const { getByText } = render(
       <FlashcardProvider>
