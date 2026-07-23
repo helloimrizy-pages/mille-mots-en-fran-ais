@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFirebaseAdapter, createMockAdapter } from './adapter';
 import { emptySyncedBlob } from './types';
 
@@ -66,11 +66,30 @@ describe('createMockAdapter', () => {
   });
 });
 
-describe('firebase module', () => {
+describe('firebase module (forced-unconfigured)', () => {
+  // These tests assert the degrade-to-local behavior when Firebase is NOT
+  // configured. Vitest loads the project's .env, so once a developer adds real
+  // VITE_FIREBASE_* values the ambient env is configured — we must force the
+  // unconfigured state here rather than rely on the env being empty, or these
+  // tests break (and the real adapter would reach the live backend) the moment
+  // anyone sets up a Firebase project.
+  beforeEach(() => {
+    vi.stubEnv('VITE_FIREBASE_API_KEY', '');
+    vi.stubEnv('VITE_FIREBASE_AUTH_DOMAIN', '');
+    vi.stubEnv('VITE_FIREBASE_PROJECT_ID', '');
+    vi.stubEnv('VITE_FIREBASE_APP_ID', '');
+    // Force ./firebase to re-evaluate its module-scope config against the stubs.
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
   it('is safe to import with no config, and reports itself unconfigured', async () => {
-    // The test environment has no VITE_FIREBASE_* values. Importing must not
-    // throw and getFirebase() must return null — that is what makes a missing
-    // config degrade to local-only rather than crashing the app on mount.
+    // Importing must not throw and getFirebase() must return null — that is what
+    // makes a missing config degrade to local-only rather than crashing on mount.
     const mod = await import('./firebase');
     expect(mod.firebaseConfigured).toBe(false);
     expect(mod.getFirebase()).toBeNull();
