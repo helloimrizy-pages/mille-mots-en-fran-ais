@@ -9,6 +9,8 @@ import { bucketCounts, type Strength } from '../strength';
 import { emptyPlayResult, type PlayAnswer, type PlayItem, type PlayResult, type PlaySettings, type PlaySource } from '../types';
 import type { Grade } from '../../flashcards/types';
 import { gradeForActivity, shouldSchedule } from '../grading';
+import { applyDrill, type DrillPending } from '../drill';
+import { useConjugations, type ConjugationData } from '../../hooks/useConjugations';
 import { FlashcardActivity } from './activities/FlashcardActivity';
 import { MultipleChoiceActivity } from './activities/MultipleChoiceActivity';
 import { TypeActivity } from './activities/TypeActivity';
@@ -29,7 +31,15 @@ interface Props {
 
 type PlayState =
   | { kind: 'setup' }
-  | { kind: 'session'; queue: PlayItem[]; index: number; streak: number; result: PlayResult }
+  | {
+      kind: 'session';
+      queue: PlayItem[];
+      index: number;
+      streak: number;
+      result: PlayResult;
+      /** How many more correct answers each missed word owes. */
+      pending: DrillPending;
+    }
   | { kind: 'summary'; result: PlayResult };
 
 const EMPTY_BUCKET_COUNTS: Record<Strength, number> = {
@@ -37,18 +47,27 @@ const EMPTY_BUCKET_COUNTS: Record<Strength, number> = {
   'shaky': 0, 'getting-solid': 0, 'solid': 0,
 };
 
-function renderActivity(item: PlayItem, onResult: (answer: PlayAnswer) => void, onNext: () => void) {
+function renderActivity(
+  item: PlayItem,
+  onResult: (answer: PlayAnswer) => void,
+  onNext: () => void,
+  conj: ConjugationData | null,
+) {
   switch (item.activity) {
-    case 'intro': return <IntroActivity item={item} onNext={onNext} />;
-    case 'flashcard': return <FlashcardActivity item={item} onResult={onResult} />;
-    case 'choice': return <MultipleChoiceActivity item={item} onResult={onResult} />;
-    case 'type': return <TypeActivity item={item} onResult={onResult} />;
+    case 'intro': return <IntroActivity item={item} onNext={onNext} conj={conj} />;
+    case 'flashcard': return <FlashcardActivity item={item} onResult={onResult} conj={conj} />;
+    case 'choice': return <MultipleChoiceActivity item={item} onResult={onResult} conj={conj} />;
+    case 'type': return <TypeActivity item={item} onResult={onResult} conj={conj} />;
     case 'listen': return <ListenActivity item={item} onResult={onResult} />;
   }
 }
 
 export function PlayModal({ words, selected, open, onClose, forceSource }: Props) {
   const api = useFlashcardState();
+  // Starts loading while the setup screen is up, so the grammar hints are ready
+  // long before the first question. Module-cached, so this is free if a verb row
+  // was already expanded in the word list.
+  const { data: conj } = useConjugations();
   const [settings, setSettings] = useState<PlaySettings>(() => loadPlaySettings());
   const [state, setState] = useState<PlayState>({ kind: 'setup' });
 
@@ -113,16 +132,26 @@ export function PlayModal({ words, selected, open, onClose, forceSource }: Props
     savePlaySettings(settings);
     const queue = buildPlayQueue({ selected: preview.words, pool: words, settings, cards: api.cards });
     if (queue.length === 0) return;
-    setState({ kind: 'session', queue, index: 0, streak: 0, result: emptyPlayResult(Date.now()) });
+    setState({ kind: 'session', queue, index: 0, streak: 0, result: emptyPlayResult(Date.now()), pending: {} });
   };
 
-  /** Moves to the next queue item, or to the summary when there is none. */
-  const advance = (session: Extract<PlayState, { kind: 'session' }>, streak: number, result: PlayResult) => {
+  /**
+   * Moves to the next queue item, or to the summary when there is none. `queue`
+   * and `pending` are passed in rather than read from the session, because a
+   * missed word grows the queue as part of the very answer being handled.
+   */
+  const advance = (
+    session: Extract<PlayState, { kind: 'session' }>,
+    streak: number,
+    result: PlayResult,
+    queue: PlayItem[] = session.queue,
+    pending: DrillPending = session.pending,
+  ) => {
     const nextIndex = session.index + 1;
-    if (nextIndex >= session.queue.length) {
+    if (nextIndex >= queue.length) {
       setState({ kind: 'summary', result: { ...result, endedAt: Date.now() } });
     } else {
-      setState({ kind: 'session', queue: session.queue, index: nextIndex, streak, result });
+      setState({ kind: 'session', queue, index: nextIndex, streak, result, pending });
     }
   };
 
@@ -161,21 +190,27 @@ export function PlayModal({ words, selected, open, onClose, forceSource }: Props
       grade = gradeForActivity(item.activity, correct, card, now);
     }
 
-    if (scheduleThis) {
+    // A drill repetition is practice only. The miss that caused it already wrote
+    // its Again, and re-grading the same card two more times would triple the
+    // review log for one lapse.
+    const writeSchedule = scheduleThis && !item.drill;
+    if (writeSchedule) {
       api.grade(item.word.id, item.direction, grade, now);
     }
+
+    const drill = applyDrill(state.queue, state.index, state.pending, item, correct);
 
     const streak = correct ? state.streak + 1 : 0;
     const result: PlayResult = {
       ...state.result,
       correct: state.result.correct + (correct ? 1 : 0),
       wrong: state.result.wrong + (correct ? 0 : 1),
-      practiced: state.result.practiced + (scheduleThis ? 0 : 1),
+      practiced: state.result.practiced + (writeSchedule ? 0 : 1),
       total: state.result.total + 1,
       streakMax: Math.max(state.result.streakMax, streak),
     };
 
-    advance(state, streak, result);
+    advance(state, streak, result, drill.queue, drill.pending);
   };
 
   if (!open) return null;
@@ -236,7 +271,7 @@ export function PlayModal({ words, selected, open, onClose, forceSource }: Props
                 <div className="h-full bg-emphasis transition-all" style={{ width: `${(state.index / state.queue.length) * 100}%` }} />
               </div>
               <div key={state.index}>
-                {renderActivity(current, handleResult, handleIntroDone)}
+                {renderActivity(current, handleResult, handleIntroDone, conj)}
               </div>
             </div>
           )}

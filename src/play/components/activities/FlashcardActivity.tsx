@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import type { Grade } from '../../../flashcards/types';
 import type { ActivityProps } from '../../types';
 import { FrenchFace } from './FrenchFace';
+import { PromptHint } from '../PromptHint';
 
 const GRADES: Array<{ grade: Grade; label: string; className: string }> = [
   { grade: 1, label: 'Again', className: 'bg-red-500/90 hover:bg-red-500 text-white' },
@@ -13,7 +14,7 @@ const GRADES: Array<{ grade: Grade; label: string; className: string }> = [
   { grade: 4, label: 'Easy', className: 'bg-sky-500/90 hover:bg-sky-500 text-white' },
 ];
 
-export function FlashcardActivity({ item, onResult }: ActivityProps) {
+export function FlashcardActivity({ item, onResult, conj }: ActivityProps) {
   const { word, direction } = item;
   const audio = useAudio();
   const [revealed, setRevealed] = useState(false);
@@ -31,6 +32,8 @@ export function FlashcardActivity({ item, onResult }: ActivityProps) {
         ) : (
           <div className="text-3xl font-semibold">{word.english}</div>
         )}
+
+        <PromptHint word={word} conj={conj} showCloze={!promptFrench} />
 
         {revealed && (
           <div className="mt-5 pt-5 border-t border-border w-full flex flex-col items-center">

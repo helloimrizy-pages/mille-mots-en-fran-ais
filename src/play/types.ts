@@ -1,5 +1,6 @@
 import type { Word } from '../types';
 import type { Direction, Grade } from '../flashcards/types';
+import type { ConjugationData } from '../hooks/useConjugations';
 import type { Strength } from './strength';
 
 /** The activities the user can enable, and the only ones that produce a grade. */
@@ -38,6 +39,12 @@ export interface PlayItem {
   activity: ActivityType;
   direction: Direction;
   choices?: Word[];
+  /**
+   * A repetition requeued after the word was missed. Shown and tallied like any
+   * other item, but never allowed to touch the FSRS schedule — the original miss
+   * already graded the card, and drilling it should not grade it again.
+   */
+  drill?: boolean;
 }
 
 export interface PlaySettings {
@@ -62,12 +69,19 @@ export interface PlayResult {
 export interface ActivityProps {
   item: PlayItem;
   onResult: (answer: PlayAnswer) => void;
+  /**
+   * Conjugation tables, used to label which form of a verb the prompt means.
+   * Optional and nullable: it loads lazily, and without it the prompt simply
+   * renders as it did before.
+   */
+  conj?: ConjugationData | null;
 }
 
 /** The intro card reports nothing — it only advances the queue. */
 export interface IntroProps {
   item: PlayItem;
   onNext: () => void;
+  conj?: ConjugationData | null;
 }
 
 export const ALL_ACTIVITIES: AnswerableActivity[] = ['flashcard', 'choice', 'type', 'listen'];

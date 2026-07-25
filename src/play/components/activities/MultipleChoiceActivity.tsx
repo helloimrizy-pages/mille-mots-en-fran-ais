@@ -4,8 +4,9 @@ import { useAudio } from '../../../hooks/useAudio';
 import { cn } from '@/lib/utils';
 import type { Word } from '../../../types';
 import type { ActivityProps } from '../../types';
+import { PromptHint } from '../PromptHint';
 
-export function MultipleChoiceActivity({ item, onResult }: ActivityProps) {
+export function MultipleChoiceActivity({ item, onResult, conj }: ActivityProps) {
   const { word, direction, choices = [] } = item;
   const audio = useAudio();
   const [picked, setPicked] = useState<number | null>(null);
@@ -33,6 +34,8 @@ export function MultipleChoiceActivity({ item, onResult }: ActivityProps) {
         ) : (
           <div className="text-2xl font-medium">{word.english}</div>
         )}
+
+        <PromptHint word={word} conj={conj} showCloze={!promptFrench} />
       </div>
 
       <div className="grid grid-cols-1 gap-2">

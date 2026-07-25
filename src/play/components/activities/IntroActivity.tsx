@@ -3,13 +3,14 @@ import { Volume2 } from 'lucide-react';
 import { useAudio } from '../../../hooks/useAudio';
 import type { IntroProps } from '../../types';
 import { FrenchFace } from './FrenchFace';
+import { PromptHint } from '../PromptHint';
 
 /**
  * The un-graded first look at a word the user has never studied: french, audio,
  * meaning and example, all shown at once. Nothing is asked and nothing is
  * scheduled — the questions about this word follow it in the queue.
  */
-export function IntroActivity({ item, onNext }: IntroProps) {
+export function IntroActivity({ item, onNext, conj }: IntroProps) {
   const { word } = item;
   const audio = useAudio();
   const playWord = () => audio.play(`w-${word.id}`, word.audio.word);
@@ -27,6 +28,8 @@ export function IntroActivity({ item, onNext }: IntroProps) {
 
         <FrenchFace word={word} onPlay={playWord} size="lg" />
         <div className="mt-2 text-sm text-text-subtle font-mono">{word.ipa}</div>
+        {/* The intro is where a form like `ai` is best explained as je · présent. */}
+        <PromptHint word={word} conj={conj} showCloze={false} />
 
         <div className="mt-5 pt-5 border-t border-border w-full flex flex-col items-center">
           <div className="text-xl">{word.english}</div>

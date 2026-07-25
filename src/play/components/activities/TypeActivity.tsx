@@ -4,8 +4,9 @@ import { useAudio } from '../../../hooks/useAudio';
 import { cn } from '@/lib/utils';
 import { TypedAnswer, isTypedAnswerCorrect } from '../../../flashcards/components/TypedAnswer';
 import type { ActivityProps } from '../../types';
+import { PromptHint } from '../PromptHint';
 
-export function TypeActivity({ item, onResult }: ActivityProps) {
+export function TypeActivity({ item, onResult, conj }: ActivityProps) {
   const { word, direction } = item;
   const audio = useAudio();
   const [value, setValue] = useState('');
@@ -37,6 +38,8 @@ export function TypeActivity({ item, onResult }: ActivityProps) {
         ) : (
           <div className="text-2xl font-medium">{word.english}</div>
         )}
+
+        <PromptHint word={word} conj={conj} showCloze={!promptFrench} />
 
         {result !== null && (
           <div className="mt-4 text-sm">
