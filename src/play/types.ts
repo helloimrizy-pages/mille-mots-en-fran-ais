@@ -2,7 +2,16 @@ import type { Word } from '../types';
 import type { Direction, Grade } from '../flashcards/types';
 import type { Strength } from './strength';
 
-export type ActivityType = 'flashcard' | 'choice' | 'type' | 'listen';
+/** The activities the user can enable, and the only ones that produce a grade. */
+export type AnswerableActivity = 'flashcard' | 'choice' | 'type' | 'listen';
+
+/**
+ * Everything that can occupy a queue slot. `intro` is the un-graded card that
+ * teaches a never-studied word — french, audio, meaning and example — before
+ * that word's first question. It is emitted by buildPlayQueue, never chosen by
+ * the user, so it stays out of ALL_ACTIVITIES and PlaySettings.
+ */
+export type ActivityType = AnswerableActivity | 'intro';
 
 /**
  * What an activity reports when the user answers. Choice/type/listen report only
@@ -32,7 +41,7 @@ export interface PlayItem {
 }
 
 export interface PlaySettings {
-  activities: ActivityType[];
+  activities: AnswerableActivity[];
   repsPerWord: 2 | 3;
   wordCount: PlayCount;
   source: PlaySource;
@@ -55,9 +64,15 @@ export interface ActivityProps {
   onResult: (answer: PlayAnswer) => void;
 }
 
-export const ALL_ACTIVITIES: ActivityType[] = ['flashcard', 'choice', 'type', 'listen'];
+/** The intro card reports nothing — it only advances the queue. */
+export interface IntroProps {
+  item: PlayItem;
+  onNext: () => void;
+}
 
-export const ACTIVITY_LABELS: Record<ActivityType, string> = {
+export const ALL_ACTIVITIES: AnswerableActivity[] = ['flashcard', 'choice', 'type', 'listen'];
+
+export const ACTIVITY_LABELS: Record<AnswerableActivity, string> = {
   flashcard: 'Flashcards',
   choice: 'Multiple choice',
   type: 'Type answer',

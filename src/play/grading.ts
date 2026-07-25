@@ -1,6 +1,6 @@
 import { retrievability } from './strength';
 import type { CardState, Grade } from '../flashcards/types';
-import type { ActivityType } from './types';
+import type { AnswerableActivity } from './types';
 
 // A due card whose predicted recall has decayed to this or below counts as
 // "well past due": recalling it by typing there is strong evidence and earns
@@ -27,7 +27,7 @@ export function shouldSchedule(card: CardState, now: Date): boolean {
  * to Good if ever routed through, so the switch is total.
  */
 export function gradeForActivity(
-  activity: ActivityType,
+  activity: AnswerableActivity,
   correct: boolean,
   card: CardState,
   now: Date,

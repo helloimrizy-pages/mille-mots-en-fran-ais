@@ -6,7 +6,7 @@ import {
   ALL_ACTIVITIES,
   ALL_COUNTS,
   SOURCE_LABELS,
-  type ActivityType,
+  type AnswerableActivity,
   type PlayCount,
   type PlaySettings,
   type PlaySource,
@@ -82,7 +82,7 @@ export function PlaySetup({ settings, onSettingsChange, onStart, preview, forceS
     ? ['new', 'review', 'selected']
     : ['new', 'review'];
 
-  const toggleActivity = (a: ActivityType) => {
+  const toggleActivity = (a: AnswerableActivity) => {
     const has = settings.activities.includes(a);
     const next = has ? settings.activities.filter((x) => x !== a) : [...settings.activities, a];
     onSettingsChange({ ...settings, activities: ALL_ACTIVITIES.filter((x) => next.includes(x)) });
@@ -139,6 +139,9 @@ export function PlaySetup({ settings, onSettingsChange, onStart, preview, forceS
       )}
 
       <div className="text-sm text-text-muted">{summary(settings, source, preview)}</div>
+      {source === 'new' && !empty && (
+        <p className="text-[11px] text-text-subtle -mt-4">Each new word is introduced before you're quizzed on it.</p>
+      )}
 
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-text-subtle mb-2">Activities</h3>

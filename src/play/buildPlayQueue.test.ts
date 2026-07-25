@@ -84,7 +84,10 @@ describe('buildPlayQueue', () => {
 
     it('behaves as before when the word has no stored cards', () => {
       const queue = buildPlayQueue({ selected: [makeWord(1)], pool, cards: {}, settings: settings({ activities: ['choice'] }), rng: () => 0.9 });
-      expect(queue.every((it) => it.direction === 'en-fr')).toBe(true);
+      // The word is new here, so the queue also carries an intro card; its
+      // direction is an unread placeholder, so only the questions are asserted.
+      const questions = queue.filter((it) => it.activity !== 'intro');
+      expect(questions.every((it) => it.direction === 'en-fr')).toBe(true);
     });
 
     it('never yields an en-fr item for a word studied only in fr-en', () => {
@@ -123,6 +126,41 @@ describe('buildPlayQueue', () => {
       });
       expect(queue.length).toBe(2);
       expect(queue.every((it) => it.activity === 'listen')).toBe(true);
+    });
+  });
+
+  describe('intro cards', () => {
+    const three = [makeWord(1), makeWord(2), makeWord(3)];
+
+    it('emits no intros when no cards map is supplied', () => {
+      const queue = buildPlayQueue({ selected: three, pool, settings: settings(), rng: () => 0.3 });
+      expect(queue.some((it) => it.activity === 'intro')).toBe(false);
+      expect(queue).toHaveLength(6);
+    });
+
+    it('introduces every never-studied word exactly once', () => {
+      const queue = buildPlayQueue({ selected: three, pool, cards: {}, settings: settings(), rng: () => 0.3 });
+      expect(queue).toHaveLength(9);
+      for (const w of three) {
+        expect(queue.filter((it) => it.activity === 'intro' && it.word.id === w.id)).toHaveLength(1);
+      }
+    });
+
+    it('places each intro immediately before that word\'s first question', () => {
+      const queue = buildPlayQueue({ selected: three, pool, cards: {}, settings: settings({ repsPerWord: 3 }), rng: () => 0.7 });
+      for (const w of three) {
+        const introAt = queue.findIndex((it) => it.activity === 'intro' && it.word.id === w.id);
+        const firstQuestionAt = queue.findIndex((it) => it.activity !== 'intro' && it.word.id === w.id);
+        expect(introAt).toBeGreaterThanOrEqual(0);
+        expect(firstQuestionAt).toBe(introAt + 1);
+      }
+    });
+
+    it('does not introduce a word that has already been studied', () => {
+      const cards = Object.fromEntries([studiedCard(2, 'fr-en')]);
+      const queue = buildPlayQueue({ selected: three, pool, cards, settings: settings(), rng: () => 0.3 });
+      const introduced = queue.filter((it) => it.activity === 'intro').map((it) => it.word.id);
+      expect(introduced.sort()).toEqual([1, 3]);
     });
   });
 });

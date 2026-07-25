@@ -2,7 +2,7 @@ import type { Word } from '../types';
 import type { CardState, Direction } from '../flashcards/types';
 import { pickDistractors } from './distractors';
 import { seenCards } from './strength';
-import type { ActivityType, PlayItem, PlaySettings } from './types';
+import type { AnswerableActivity, PlayItem, PlaySettings } from './types';
 
 export interface BuildPlayQueueInputs {
   selected: Word[];
@@ -28,11 +28,11 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
   return copy;
 }
 
-function pickActivities(enabled: ActivityType[], reps: number, rng: () => number): ActivityType[] {
+function pickActivities(enabled: AnswerableActivity[], reps: number, rng: () => number): AnswerableActivity[] {
   const shuffled = shuffle(enabled, rng);
-  const result: ActivityType[] = [];
+  const result: AnswerableActivity[] = [];
   for (let i = 0; i < reps; i++) {
-    result.push(shuffled[i % shuffled.length] as ActivityType);
+    result.push(shuffled[i % shuffled.length] as AnswerableActivity);
   }
   return result;
 }
@@ -49,7 +49,7 @@ function studiedDirections(word: Word, cards: Record<string, CardState> | undefi
   return directions.length > 0 ? directions : null;
 }
 
-function directionFor(activity: ActivityType, rng: () => number, studied: Direction[] | null): Direction {
+function directionFor(activity: AnswerableActivity, rng: () => number, studied: Direction[] | null): Direction {
   // Listen's prompt is the French audio, so it can only run fr-en. Flashcard,
   // choice and type all render either direction, so they respect the studied
   // restriction (or pick randomly when the word is new / unrestricted).
@@ -64,7 +64,7 @@ function directionFor(activity: ActivityType, rng: () => number, studied: Direct
  * leave nothing enabled at all, in which case fall back to the full enabled
  * list rather than emitting no items for the word.
  */
-function activitiesFor(enabled: ActivityType[], studied: Direction[] | null): ActivityType[] {
+function activitiesFor(enabled: AnswerableActivity[], studied: Direction[] | null): AnswerableActivity[] {
   if (!studied || studied.includes('fr-en')) return enabled;
   const filtered = enabled.filter((a) => a !== 'listen');
   return filtered.length > 0 ? filtered : enabled;
@@ -88,12 +88,37 @@ function spreadByWord(items: PlayItem[]): PlayItem[] {
   return result;
 }
 
+/**
+ * Puts an un-graded intro card immediately before the first question about each
+ * never-studied word, so a word is always taught before it is asked. Runs after
+ * the shuffle — spreadByWord only keeps duplicate *questions* apart, and an
+ * intro sitting next to its own first question is exactly the intent.
+ */
+function withIntros(items: PlayItem[], introIds: Set<number>): PlayItem[] {
+  if (introIds.size === 0) return items;
+  const out: PlayItem[] = [];
+  const introduced = new Set<number>();
+  for (const item of items) {
+    if (introIds.has(item.word.id) && !introduced.has(item.word.id)) {
+      introduced.add(item.word.id);
+      // Direction is unread for an intro (it shows both sides); fr-en satisfies PlayItem.
+      out.push({ word: item.word, activity: 'intro', direction: 'fr-en' });
+    }
+    out.push(item);
+  }
+  return out;
+}
+
 export function buildPlayQueue({ selected, pool, settings, cards, rng = Math.random }: BuildPlayQueueInputs): PlayItem[] {
-  const enabled = settings.activities.length > 0 ? settings.activities : (['flashcard'] as ActivityType[]);
+  const enabled = settings.activities.length > 0 ? settings.activities : (['flashcard'] as AnswerableActivity[]);
   const items: PlayItem[] = [];
+  // Same predicate selectPlayWords uses for the New source, so the two agree on
+  // what "new" means. Without a cards map there is no way to tell, so no intros.
+  const introIds = new Set<number>();
 
   for (const word of selected) {
     const studied = studiedDirections(word, cards);
+    if (cards && seenCards(word, cards).length === 0) introIds.add(word.id);
     const wordActivities = activitiesFor(enabled, studied);
     for (const activity of pickActivities(wordActivities, settings.repsPerWord, rng)) {
       const direction = directionFor(activity, rng, studied);
@@ -105,5 +130,5 @@ export function buildPlayQueue({ selected, pool, settings, cards, rng = Math.ran
     }
   }
 
-  return spreadByWord(shuffle(items, rng));
+  return withIntros(spreadByWord(shuffle(items, rng)), introIds);
 }

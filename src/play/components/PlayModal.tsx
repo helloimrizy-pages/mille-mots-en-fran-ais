@@ -13,6 +13,7 @@ import { FlashcardActivity } from './activities/FlashcardActivity';
 import { MultipleChoiceActivity } from './activities/MultipleChoiceActivity';
 import { TypeActivity } from './activities/TypeActivity';
 import { ListenActivity } from './activities/ListenActivity';
+import { IntroActivity } from './activities/IntroActivity';
 import { PlaySetup, type SetupPreview } from './PlaySetup';
 import { PlaySummary } from './PlaySummary';
 
@@ -36,8 +37,9 @@ const EMPTY_BUCKET_COUNTS: Record<Strength, number> = {
   'shaky': 0, 'getting-solid': 0, 'solid': 0,
 };
 
-function renderActivity(item: PlayItem, onResult: (answer: PlayAnswer) => void) {
+function renderActivity(item: PlayItem, onResult: (answer: PlayAnswer) => void, onNext: () => void) {
   switch (item.activity) {
+    case 'intro': return <IntroActivity item={item} onNext={onNext} />;
     case 'flashcard': return <FlashcardActivity item={item} onResult={onResult} />;
     case 'choice': return <MultipleChoiceActivity item={item} onResult={onResult} />;
     case 'type': return <TypeActivity item={item} onResult={onResult} />;
@@ -114,10 +116,31 @@ export function PlayModal({ words, selected, open, onClose, forceSource }: Props
     setState({ kind: 'session', queue, index: 0, streak: 0, result: emptyPlayResult(Date.now()) });
   };
 
+  /** Moves to the next queue item, or to the summary when there is none. */
+  const advance = (session: Extract<PlayState, { kind: 'session' }>, streak: number, result: PlayResult) => {
+    const nextIndex = session.index + 1;
+    if (nextIndex >= session.queue.length) {
+      setState({ kind: 'summary', result: { ...result, endedAt: Date.now() } });
+    } else {
+      setState({ kind: 'session', queue: session.queue, index: nextIndex, streak, result });
+    }
+  };
+
+  // An intro is exposure, not an answer: no grade is written, and the streak and
+  // the result tallies pass through untouched so the summary's answer count stays
+  // honest.
+  const handleIntroDone = () => {
+    if (state.kind !== 'session') return;
+    advance(state, state.streak, state.result);
+  };
+
   const handleResult = (answer: PlayAnswer) => {
     if (state.kind !== 'session') return;
     const item = state.queue[state.index];
     if (!item) return;
+    // Intro cards report through onNext, never here. The guard also narrows
+    // item.activity to the answerable set that gradeForActivity accepts.
+    if (item.activity === 'intro') return;
 
     const now = new Date();
     // Read the card as it stands *before* this answer, both to decide the grade
@@ -152,12 +175,7 @@ export function PlayModal({ words, selected, open, onClose, forceSource }: Props
       streakMax: Math.max(state.result.streakMax, streak),
     };
 
-    const nextIndex = state.index + 1;
-    if (nextIndex >= state.queue.length) {
-      setState({ kind: 'summary', result: { ...result, endedAt: Date.now() } });
-    } else {
-      setState({ kind: 'session', queue: state.queue, index: nextIndex, streak, result });
-    }
+    advance(state, streak, result);
   };
 
   if (!open) return null;
@@ -218,7 +236,7 @@ export function PlayModal({ words, selected, open, onClose, forceSource }: Props
                 <div className="h-full bg-emphasis transition-all" style={{ width: `${(state.index / state.queue.length) * 100}%` }} />
               </div>
               <div key={state.index}>
-                {renderActivity(current, handleResult)}
+                {renderActivity(current, handleResult, handleIntroDone)}
               </div>
             </div>
           )}

@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import { useAudio } from '../../../hooks/useAudio';
 import { cn } from '@/lib/utils';
-import type { Word } from '../../../types';
 import type { Grade } from '../../../flashcards/types';
 import type { ActivityProps } from '../../types';
+import { FrenchFace } from './FrenchFace';
 
 const GRADES: Array<{ grade: Grade; label: string; className: string }> = [
   { grade: 1, label: 'Again', className: 'bg-red-500/90 hover:bg-red-500 text-white' },
@@ -12,25 +12,6 @@ const GRADES: Array<{ grade: Grade; label: string; className: string }> = [
   { grade: 3, label: 'Good', className: 'bg-emerald-500/90 hover:bg-emerald-500 text-white' },
   { grade: 4, label: 'Easy', className: 'bg-sky-500/90 hover:bg-sky-500 text-white' },
 ];
-
-/** The French word rendered as a tap-to-hear button — the prompt in fr-en, the
- *  revealed answer in en-fr. */
-function FrenchFace({ word, onPlay, size }: { word: Word; onPlay: () => void; size: 'lg' | 'sm' }) {
-  return (
-    <button
-      type="button"
-      onClick={onPlay}
-      className={cn(
-        'flex items-center gap-2 hover:text-emphasis transition-colors',
-        size === 'lg' ? 'text-3xl font-semibold' : 'text-xl font-medium',
-      )}
-      aria-label={`Play pronunciation of ${word.french}`}
-    >
-      {word.french}
-      <Volume2 size={size === 'lg' ? 20 : 16} className="opacity-60" />
-    </button>
-  );
-}
 
 export function FlashcardActivity({ item, onResult }: ActivityProps) {
   const { word, direction } = item;

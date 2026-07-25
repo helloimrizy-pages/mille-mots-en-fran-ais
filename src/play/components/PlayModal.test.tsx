@@ -15,6 +15,13 @@ function makeWord(id: number): Word {
   return { id, rank: id, french: `mot${id}`, english: `meaning${id}`, pos: 'noun', ipa: '/x/', example: { fr: 'Ex.', en: 'Ex.' }, audio: { word: 'w.mp3', sentence: 's.mp3' } };
 }
 
+/** The provider debounce-saves on mount, so assert on the blob's contents
+ *  rather than on the key's absence. */
+function storedCardCount(): number {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  return raw ? Object.keys(JSON.parse(raw).cards ?? {}).length : 0;
+}
+
 function renderModal(words: Word[], selected: Word[] = [], forceSource?: PlaySource) {
   return render(
     <FlashcardProvider>
@@ -58,6 +65,26 @@ describe('PlayModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'New' }));
     await userEvent.click(screen.getByRole('button', { name: /start playing/i }));
     expect(screen.getByLabelText(/session progress/i)).toBeInTheDocument();
+  });
+
+  it('teaches a new word before asking about it, without scheduling the card', async () => {
+    const words = Array.from({ length: 30 }, (_, i) => makeWord(i + 1));
+    renderModal(words);
+    await userEvent.click(screen.getByRole('button', { name: 'New' }));
+    await userEvent.click(screen.getByRole('button', { name: /start playing/i }));
+
+    // The first step is the intro card: it shows the meaning outright and the
+    // only thing to do is continue.
+    expect(screen.getByText('New word')).toBeInTheDocument();
+    expect(screen.getByLabelText(/session progress/i)).toHaveTextContent(/^1 \//);
+
+    await userEvent.click(screen.getByRole('button', { name: /got it/i }));
+
+    // A question follows, and nothing has been graded — the intro is pure
+    // exposure, so no card was written.
+    expect(screen.queryByText('New word')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/session progress/i)).toHaveTextContent(/^2 \//);
+    expect(storedCardCount()).toBe(0);
   });
 
   it('cannot start Review with an untouched deck', async () => {
