@@ -76,6 +76,30 @@ describe('StudyModal', () => {
     expect(screen.getByRole('button', { name: /start session/i })).toBeInTheDocument();
   });
 
+  it('ends an in-flight session on close, landing back on setup when reopened', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(tree({ open: true }));
+    await user.click(screen.getByRole('button', { name: /start session/i }));
+    expect(screen.getByLabelText(/session progress/i)).toBeInTheDocument();
+
+    rerender(tree({ open: false }));
+    rerender(tree({ open: true }));
+
+    // The session is over, not paused: setup again, no lingering progress counter.
+    expect(screen.getByRole('button', { name: /start session/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/session progress/i)).not.toBeInTheDocument();
+  });
+
+  it('does not interrupt a session on a re-render while the modal stays open', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(tree({ open: true }));
+    await user.click(screen.getByRole('button', { name: /start session/i }));
+    expect(screen.getByLabelText(/session progress/i)).toBeInTheDocument();
+
+    rerender(tree({ open: true }));
+    expect(screen.getByLabelText(/session progress/i)).toBeInTheDocument();
+  });
+
   it('does not trap a manual tab switch while the modal stays open', async () => {
     const user = userEvent.setup();
     const { rerender } = render(tree({ open: true }));

@@ -49,14 +49,21 @@ export function StudyModal({ words, open, onClose, settingsOnly }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
-  // Reset the tabbed modal to Study on every open (not just mount), without an
-  // extra effect: this is React's documented "adjust state while rendering"
-  // pattern, keyed off `open` so a still-open modal never fights the user's own
-  // tab clicks. Harmless in settings-only mode, which never renders the tabs.
+  // Reset the tabbed modal to Study, and any in-flight session back to setup, on
+  // every open (not just mount), without an extra effect: this is React's
+  // documented "adjust state while rendering" pattern, keyed off `open` so a
+  // still-open modal never fights the user's own tab clicks or grading. The
+  // modal is mounted for the app's whole life, so without this a session closed
+  // mid-card resumes on the next open instead of ending. Grades are written to
+  // the store as they happen, so only the session tally is discarded. Harmless
+  // in settings-only mode, which renders neither the tabs nor the session.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) setTab('study');
+    if (open) {
+      setTab('study');
+      setStudy({ kind: 'setup' });
+    }
   }
 
   useEffect(() => {
