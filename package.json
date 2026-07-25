@@ -15,7 +15,8 @@
     "pipeline:validate": "tsx scripts/03-validate.ts",
     "pipeline:tts-words": "tsx scripts/04-tts-words.ts",
     "pipeline:tts-sent": "tsx scripts/05-tts-sentences.ts",
-    "pipeline:build": "tsx scripts/06-build-words-json.ts"
+    "pipeline:build": "tsx scripts/06-build-words-json.ts",
+    "pipeline:conjugations": "tsx scripts/08-build-conjugations.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
@@ -50,6 +51,8 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "french-verbs": "^5.4.0",
+    "french-verbs-lefff": "^3.4.0",
     "globals": "^17.5.0",
     "jsdom": "^29.0.2",
     "postcss": "^8.5.10",

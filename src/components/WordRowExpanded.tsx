@@ -1,6 +1,7 @@
 import { Play, Volume2 } from 'lucide-react';
 import type { Word } from '../types';
 import { cn } from '@/lib/utils';
+import { ConjugationPanel } from './ConjugationPanel';
 
 interface Props {
   word: Word;
@@ -52,6 +53,8 @@ export function WordRowExpanded({ word, hideTranslation, onPlayWord, onPlaySente
           {word.example.en}
         </div>
       </div>
+
+      {word.pos === 'verb' && <ConjugationPanel word={word} />}
 
       {(word.synonyms?.length || word.plural) && (
         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
