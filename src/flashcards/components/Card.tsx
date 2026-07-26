@@ -6,7 +6,8 @@ import { previewIntervals } from '../fsrs';
 import type { Grade } from '../types';
 import type { SessionCard } from '../useSession';
 import { GradeButtons } from './GradeButtons';
-import { TypedAnswer, isTypedAnswerCorrect } from './TypedAnswer';
+import { TypedAnswer } from './TypedAnswer';
+import { isTypedAnswerCorrect } from '../answerCheck';
 import { cn } from '@/lib/utils';
 
 interface Props {

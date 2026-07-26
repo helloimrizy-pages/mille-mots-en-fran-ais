@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import { useAudio } from '../../../hooks/useAudio';
 import { cn } from '@/lib/utils';
-import { TypedAnswer, isTypedAnswerCorrect } from '../../../flashcards/components/TypedAnswer';
+import { TypedAnswer } from '../../../flashcards/components/TypedAnswer';
+import { isTypedAnswerCorrect } from '../../../flashcards/answerCheck';
 import type { ActivityProps } from '../../types';
 import { PromptHint } from '../PromptHint';
 
@@ -17,9 +18,9 @@ export function TypeActivity({ item, onResult, conj }: ActivityProps) {
 
   const submit = () => {
     if (result !== null) return;
-    const alternatives = expected.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
-    const ok = alternatives.some((alt) => isTypedAnswerCorrect(value, alt));
-    setResult(ok ? 'correct' : 'wrong');
+    // isTypedAnswerCorrect handles the multi-meaning glosses itself, so both
+    // Play and Study accept the same set of answers.
+    setResult(isTypedAnswerCorrect(value, expected) ? 'correct' : 'wrong');
   };
 
   return (

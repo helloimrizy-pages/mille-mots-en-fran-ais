@@ -32,19 +32,3 @@ export function TypedAnswer({ value, onChange, onSubmit, placeholder, disabled }
     </form>
   );
 }
-
-export function normalizeForCompare(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9'\-\s]/g, '')
-    .trim();
-}
-
-export function isTypedAnswerCorrect(typed: string, expected: string): boolean {
-  const a = normalizeForCompare(typed);
-  const b = normalizeForCompare(expected);
-  if (!a) return false;
-  return a === b;
-}
